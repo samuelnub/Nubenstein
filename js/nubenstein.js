@@ -43,9 +43,8 @@ function nubenstein() {
         openDoor: new LevelLegendElementCreator("d", 8)
     };
 
-    // The player should traverse from left to right, instead of a messy square
-    const levelWidth = 256;
-    const levelHeight = 128;
+    const levelWidth = 64;
+    const levelHeight = 64;
     let levelNumber = 1;
     // array of chars corresponding to that legend
     let levelGrid = [];
@@ -73,9 +72,9 @@ function nubenstein() {
 
         (function createCavities() {
             // Plonk some cavities, see if they overlap, if so, discard, if not, insert it into level
-            const maxCavityCount = prng.nextInRangeRound(Math.min(levelWidth, levelHeight), Math.max(levelWidth, levelHeight));
+            const maxCavityCount = prng.nextInRangeRound(Math.min(levelWidth, levelHeight), Math.max(levelWidth, levelHeight)) * 2;
             const minCavityWH = 4;
-            const maxCavityWH = 16; // exclusive
+            const maxCavityWH = 8; // exclusive
             const cavityHallwayW = 2;
 
             function Cavity(x, y, w, h) {
@@ -83,6 +82,7 @@ function nubenstein() {
                 this.y = y;
                 this.w = w;
                 this.h = h;
+                this.dirMoved; // refer to below's switch case. relative to last square in list. the first one in the array should be undefined
             }
 
             let levelCavities = [];
@@ -96,61 +96,32 @@ function nubenstein() {
                 }
 
                 // shift this cavity to north, south, west, east of the last inserted cavity
-                let triesMax = 5;
-                tryDirections(triesMax);
-                function tryDirections(tries) {
-                    let lastCavityRef = levelCavities[levelCavities.length - 1];
-                    cavityTry.x = lastCavityRef.x;
-                    cavityTry.y = lastCavityRef.y;
-                    switch (prng.nextInRangeFloor(0, 4)) { // TODO: clamp values
-                        case 0:
-                            cavityTry.y += prng.nextInRangeRound(cavityTry.h, cavityTry.h + cavityHallwayW); // move the whole darn thing
-                            cavityTry.x += prng.nextInRangeRound(Math.round(-lastCavityRef.w / 2), Math.round(lastCavityRef.w / 2)); // offset it
-                            if(doesThisIntersect(cavityTry) && tries > 0) {
-                                tryDirections(--tries)
-                            }
-                            break;
-                        case 1:
-                            cavityTry.y -= prng.nextInRangeRound(cavityTry.h, cavityTry.h + cavityHallwayW);
-                            cavityTry.x += prng.nextInRangeRound(Math.round(-lastCavityRef.w / 2), Math.round(lastCavityRef.w / 2));
-                            if(doesThisIntersect(cavityTry) && tries > 0) {
-                                tryDirections(--tries)
-                            }
-                            break;
-                        case 2:
-                            cavityTry.x += prng.nextInRangeRound(cavityTry.w, cavityTry.w + cavityHallwayW);
-                            cavityTry.y += prng.nextInRangeRound(Math.round(-lastCavityRef.h / 2), Math.round(lastCavityRef.h / 2));
-                            if(doesThisIntersect(cavityTry) && tries > 0) {
-                                tryDirections(--tries)
-                            }
-                            break;
-                        case 3:
-                            cavityTry.x -= prng.nextInRangeRound(cavityTry.w, cavityTry.w + cavityHallwayW);
-                            cavityTry.y += prng.nextInRangeRound(Math.round(-lastCavityRef.h / 2), Math.round(lastCavityRef.h / 2));
-                            if(doesThisIntersect(cavityTry) && tries > 0) {
-                                tryDirections(--tries)
-                            }
-                            break;
-                        default:
-                            console.log("apparently numbers don't work properly in this alternate universe");
-                            break;
-                    }
-                }
-            }
+                const lastCavityRef = levelCavities[levelCavities.length-1];
+                cavityTry.x = lastCavityRef.x;
+                cavityTry.y = lastCavityRef.y;
+                let directionTry;
+                do{
+                    directionTry = prng.nextInRangeFloor(0,4);
+                } 
+                while(directionTry === lastCavityRef.dirMoved);
+                cavityTry.dirMoved = directionTry;
 
-            function doesThisIntersect(cavityTry) {
-                for (levelCavity of levelCavities) {
-                    if (doCavitiesIntersect(cavityTry, levelCavity)) {
-                        return true;
-                    }
-                    else {
-                        levelCavities.push(cavityTry);
-                        return false;
-                    }
-                }
-
-                function doCavitiesIntersect(boxA, boxB) {
-                    return (Math.abs(boxA.x - boxB.x) * 2 < ((boxA.w + 1) + (boxB.w + 1))) && (Math.abs((boxA.y + 1) - (boxB.y + 1)) * 2 < ((boxA.h + 1) + (boxB.h + 1)));
+                switch (directionTry) { // TODO: clamp values
+                    case 0:
+                        placeNewCavity(lastCavityRef, cavityTry, "x", "y", true, "w", "h");
+                        break;
+                    case 1:
+                        placeNewCavity(lastCavityRef, cavityTry, "x", "y", false, "w", "h");
+                        break;
+                    case 2:
+                        placeNewCavity(lastCavityRef, cavityTry, "y", "x", true, "h", "w");
+                        break;
+                    case 3:
+                        placeNewCavity(lastCavityRef, cavityTry, "y", "x", false, "h", "w");
+                        break;
+                    default:
+                        console.log("apparently numbers don't work properly in this alternate universe " + directionTry);
+                        break;
                 }
             }
 
@@ -163,6 +134,22 @@ function nubenstein() {
                     }
                 }
             }
+
+            function placeNewCavity(relToCavity, ourCavity, majorAxis /*string, pass it "x" for example*/, minorAxis /*the one to just offset it to give randomness*/, isPlus /*bool*/, majorLength, minorLength /*string of either W or H*/) {
+                let newMajorValue = prng.nextInRangeRound(ourCavity[majorLength], ourCavity[majorLength] * 4);
+                let newMinorValue = prng.nextInRangeRound(Math.ceil(-relToCavity[minorLength] / 4), Math.ceil(relToCavity[minorLength] / 2));
+                
+                ourCavity[majorAxis] += (isPlus ? newMajorValue : -newMajorValue);
+                ourCavity[minorAxis] += newMinorValue;
+
+                ourCavity[majorAxis] = clamp(ourCavity[majorAxis], 0, (majorAxis === "x" ? levelWidth : levelHeight)-ourCavity[majorLength]);
+                ourCavity[minorAxis] = clamp(ourCavity[minorAxis], 0, (minorAxis === "y" ? levelHeight : levelWidth)-ourCavity[minorLength]);
+
+                // TODO: check if intersects
+                levelCavities.push(ourCavity);
+            }
+
+            // Since all our "cavities" 
         })();
 
         (function createSpawnObjective() {
@@ -183,20 +170,21 @@ function nubenstein() {
             for (let i = 0; i < levelHeight; i++) {
                 strings[i] = "";
                 for (let x = 0; x < levelWidth; x++) {
-                    strings[i] += newLevelGrid[x + levelWidth * i][aspect];
+                    strings[i] += newLevelGrid[x + levelWidth * i][aspect] + newLevelGrid[x + levelWidth * i][aspect];
                 }
                 strings[i] += i.toString();
                 console.log(strings[i]);
             }
             let legendString = "";
             for (legendElement in levelLegend) {
+                // TODO: it looks more like a square on chrome's console when i do it twice
                 legendString += legendElement + "'s icon: " + levelLegend[legendElement].icon + "'  ";
             }
             console.log("Legend:");
             console.log(legendString);
         }
         printGrid("icon");
-        printGrid("variant");
+        // printGrid("variant");
 
         levelGrid = newLevelGrid.slice();
     }
