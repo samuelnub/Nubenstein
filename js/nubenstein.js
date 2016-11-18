@@ -162,9 +162,9 @@ function nubenstein() {
                 if(!doRoomsTouch(relToRoom, ourRoom)) {
                     const ourHallway = new Cavity();
                     // TODO: fix up
-                    ourHallway[majorAxis] = ourRoom[majorAxis];
+                    ourHallway[majorAxis] = (!isPlus ? ourRoom[majorAxis] : ourRoom[majorAxis] - Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]));
                     ourHallway[minorAxis] = ourRoom[minorAxis];
-                    ourHallway[majorLength] = (!isPlus ? (Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis])) + 1 : (-Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis])) - 1);
+                    ourHallway[majorLength] = Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]) + 1;
                     ourHallway[minorLength] = hallwaySize;
 
                     levelHallways.push(ourHallway);
