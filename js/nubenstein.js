@@ -40,12 +40,13 @@ function nubenstein() {
         solidObjective: new LevelLegendElementCreator("O", 16), // that elevator at the end of a level
         openSpawn: new LevelLegendElementCreator("s", 1),
         openMiddle: new LevelLegendElementCreator(" ", 1),
-        openDoor: new LevelLegendElementCreator("d", 8)
+        openDoor: new LevelLegendElementCreator("d", 8),
+        openHallway: new LevelLegendElementCreator("'", 1)
     };
 
     // webgl 1.0 only has a max index count of an ebo to be a ushort (65535) :(
-    const levelWidth = 32;
-    const levelHeight = 32;
+    const levelWidth = 64;
+    const levelHeight = 128;
     let levelNumber = 1;
     // array of chars corresponding to that legend
     let levelGrid = [];
@@ -129,18 +130,19 @@ function nubenstein() {
                 }
             }
 
-            function fillGrid(cavities) {
+            function fillGrid(cavities, legendType) {
                 for (cavity of cavities) {
                     const cavityVariant = prng.nextInRangeRound(0, levelLegend.openMiddle.variants);
                     for (let x = 0; x < cavity.w; x++) {
                         for (let y = 0; y < cavity.h; y++) {
-                            newLevelGrid[(x + cavity.x) + levelWidth * (y + cavity.y)] = levelLegend.openMiddle.create(cavityVariant);
+                            newLevelGrid[(x + cavity.x) + levelWidth * (y + cavity.y)] = levelLegend[legendType].create(cavityVariant);
                         }
                     }
                 }
             }
-            fillGrid(levelHallways);
-            fillGrid(levelRooms);
+            fillGrid(levelRooms, "openMiddle");            
+            fillGrid(levelHallways, "openHallway");
+
             console.log(levelHallways);
 
             function placeNewRoomAndHallway(relToRoom, ourRoom, majorAxis /*string, pass it "x" for example*/, minorAxis /*the one to just offset it to give randomness*/, isPlus /*bool*/, majorLength, minorLength /*string of either W or H*/) {
@@ -157,13 +159,13 @@ function nubenstein() {
                 levelRooms.push(ourRoom);
 
                 // place hallway between em too! since we're here lol
-                if(doRoomsTouch(relToRoom, ourRoom)) {
+                if(!doRoomsTouch(relToRoom, ourRoom)) {
                     const ourHallway = new Cavity();
                     // TODO: fix up
                     ourHallway[majorAxis] = ourRoom[majorAxis];
-                    ourHallway[minorAxis] = ourRoom[minorAxis] + Math.floor(newMinorValue * 0.75);
-                    ourHallway.w = (majorLength === "w" ? Math.abs(relToRoom.x - ourRoom.x) : hallwaySize);
-                    ourHallway.h = (majorLength === "h" ? Math.abs(relToRoom.y - ourRoom.y) : hallwaySize);
+                    ourHallway[minorAxis] = ourRoom[minorAxis];
+                    ourHallway[majorLength] = (!isPlus ? (Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis])) + 1 : (-Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis])) - 1);
+                    ourHallway[minorLength] = hallwaySize;
 
                     levelHallways.push(ourHallway);
                 }
@@ -172,9 +174,6 @@ function nubenstein() {
                     return (Math.abs(boxA.x - boxB.x) * 2 <= (boxA.w + boxB.w)) && (Math.abs(boxA.y - boxB.y) * 2 <= (boxA.h + boxB.h));
                 }
             }
-
-            // Since all our "cavities" are able to connec to a straight line to its previous cavity, we can link all of them up relatively cost-effectively
-
         })();
 
         (function createSpawnObjective() {
