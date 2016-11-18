@@ -43,8 +43,9 @@ function nubenstein() {
         openDoor: new LevelLegendElementCreator("d", 8)
     };
 
-    const levelWidth = 64;
-    const levelHeight = 64;
+    // webgl 1.0 only has a max index count of an ebo to be a ushort (65535) :(
+    const levelWidth = 32;
+    const levelHeight = 32;
     let levelNumber = 1;
     // array of chars corresponding to that legend
     let levelGrid = [];
@@ -70,12 +71,12 @@ function nubenstein() {
     function createLevel() {
         const newLevelGrid = [];
 
-        (function createCavities() {
+        (function createRoomsAndHallways() {
             // Plonk some cavities, see if they overlap, if so, discard, if not, insert it into level
-            const maxCavityCount = prng.nextInRangeRound(Math.min(levelWidth, levelHeight), Math.max(levelWidth, levelHeight)) * 2;
-            const minCavityWH = 4;
-            const maxCavityWH = 8; // exclusive
-            const cavityHallwayW = 2;
+            const maxRoomCount = prng.nextInRangeRound(Math.min(levelWidth, levelHeight), Math.max(levelWidth, levelHeight))*1.5;
+            const minRoomWH = 2;
+            const maxRoomWH = 6; // exclusive
+            const hallwaySize = 1; // "width" if its from your perspective
 
             function Cavity(x, y, w, h) {
                 this.x = x;
@@ -85,39 +86,42 @@ function nubenstein() {
                 this.dirMoved; // refer to below's switch case. relative to last square in list. the first one in the array should be undefined
             }
 
-            let levelCavities = [];
+            let levelRooms = [];
+            let levelHallways = [];
 
-            for (let curCavityTry = 0; curCavityTry < maxCavityCount; curCavityTry++) {
+            for (let curRoomTry = 0; curRoomTry < maxRoomCount; curRoomTry++) {
                 // These maps are pretty small, so fancy spatial partitioning isn't really needed
-                const cavityTry = new Cavity(prng.nextInRangeRound(levelWidth / 2 - minCavityWH, levelWidth / 2 + minCavityWH), prng.nextInRangeRound(levelWidth / 2 - minCavityWH, levelWidth / 2 + minCavityWH), prng.nextInRangeRound(minCavityWH, maxCavityWH), prng.nextInRangeRound(minCavityWH, maxCavityWH));
-                if (levelCavities.length === 0) {
-                    levelCavities.push(cavityTry);
+                const roomTry = new Cavity(prng.nextInRangeRound(levelWidth / 2 - minRoomWH, levelWidth / 2 + minRoomWH), prng.nextInRangeRound(levelWidth / 2 - minRoomWH, levelWidth / 2 + minRoomWH), prng.nextInRangeRound(minRoomWH, maxRoomWH), prng.nextInRangeRound(minRoomWH, maxRoomWH));
+                if (levelRooms.length === 0) {
+                    levelRooms.push(roomTry);
                     continue;
                 }
 
                 // shift this cavity to north, south, west, east of the last inserted cavity
-                const lastCavityRef = levelCavities[levelCavities.length-1];
-                cavityTry.x = lastCavityRef.x;
-                cavityTry.y = lastCavityRef.y;
+                const lastRoomRef = levelRooms[levelRooms.length-1];
+                roomTry.x = lastRoomRef.x;
+                roomTry.y = lastRoomRef.y;
                 let directionTry;
-                do{
-                    directionTry = prng.nextInRangeFloor(0,4);
-                } 
-                while(directionTry === lastCavityRef.dirMoved);
-                cavityTry.dirMoved = directionTry;
+                do {
+                    directionTry = prng.nextInRangeFloor(0, 4);
+                }
+                while (directionTry === lastRoomRef.dirMoved);
+                roomTry.dirMoved = directionTry;
 
-                switch (directionTry) { // TODO: clamp values
+                // positive x = >
+                // positive y = V
+                switch (directionTry) { 
                     case 0:
-                        placeNewCavity(lastCavityRef, cavityTry, "x", "y", true, "w", "h");
+                        placeNewRoomAndHallway(lastRoomRef, roomTry, "x", "y", true, "w", "h");
                         break;
                     case 1:
-                        placeNewCavity(lastCavityRef, cavityTry, "x", "y", false, "w", "h");
+                        placeNewRoomAndHallway(lastRoomRef, roomTry, "x", "y", false, "w", "h");
                         break;
                     case 2:
-                        placeNewCavity(lastCavityRef, cavityTry, "y", "x", true, "h", "w");
+                        placeNewRoomAndHallway(lastRoomRef, roomTry, "y", "x", true, "h", "w");
                         break;
                     case 3:
-                        placeNewCavity(lastCavityRef, cavityTry, "y", "x", false, "h", "w");
+                        placeNewRoomAndHallway(lastRoomRef, roomTry, "y", "x", false, "h", "w");
                         break;
                     default:
                         console.log("apparently numbers don't work properly in this alternate universe " + directionTry);
@@ -125,31 +129,52 @@ function nubenstein() {
                 }
             }
 
-            // fill the grid with the corresponding legend
-            for (levelCavity of levelCavities) {
-                const cavityVariant = prng.nextInRangeRound(0, levelLegend.openMiddle.variants);
-                for (let x = 0; x < levelCavity.w; x++) {
-                    for (let y = 0; y < levelCavity.h; y++) {
-                        newLevelGrid[(x + levelCavity.x) + levelWidth * (y + levelCavity.y)] = levelLegend.openMiddle.create(cavityVariant);
+            function fillGrid(cavities) {
+                for (cavity of cavities) {
+                    const cavityVariant = prng.nextInRangeRound(0, levelLegend.openMiddle.variants);
+                    for (let x = 0; x < cavity.w; x++) {
+                        for (let y = 0; y < cavity.h; y++) {
+                            newLevelGrid[(x + cavity.x) + levelWidth * (y + cavity.y)] = levelLegend.openMiddle.create(cavityVariant);
+                        }
                     }
                 }
             }
+            fillGrid(levelHallways);
+            fillGrid(levelRooms);
+            console.log(levelHallways);
 
-            function placeNewCavity(relToCavity, ourCavity, majorAxis /*string, pass it "x" for example*/, minorAxis /*the one to just offset it to give randomness*/, isPlus /*bool*/, majorLength, minorLength /*string of either W or H*/) {
-                let newMajorValue = prng.nextInRangeRound(ourCavity[majorLength], ourCavity[majorLength] * 4);
-                let newMinorValue = prng.nextInRangeRound(Math.ceil(-relToCavity[minorLength] / 4), Math.ceil(relToCavity[minorLength] / 2));
+            function placeNewRoomAndHallway(relToRoom, ourRoom, majorAxis /*string, pass it "x" for example*/, minorAxis /*the one to just offset it to give randomness*/, isPlus /*bool*/, majorLength, minorLength /*string of either W or H*/) {
+                let newMajorValue = prng.nextInRangeRound(ourRoom[majorLength], ourRoom[majorLength] * 4);
+                let newMinorValue = prng.nextInRangeRound(Math.ceil(-relToRoom[minorLength] / 4), Math.ceil(relToRoom[minorLength] / 2));
                 
-                ourCavity[majorAxis] += (isPlus ? newMajorValue : -newMajorValue);
-                ourCavity[minorAxis] += newMinorValue;
+                ourRoom[majorAxis] += (isPlus ? newMajorValue : -newMajorValue);
+                ourRoom[minorAxis] += newMinorValue;
 
-                ourCavity[majorAxis] = clamp(ourCavity[majorAxis], 0, (majorAxis === "x" ? levelWidth : levelHeight)-ourCavity[majorLength]);
-                ourCavity[minorAxis] = clamp(ourCavity[minorAxis], 0, (minorAxis === "y" ? levelHeight : levelWidth)-ourCavity[minorLength]);
+                ourRoom[majorAxis] = clamp(ourRoom[majorAxis], 1, (majorAxis === "x" ? levelWidth : levelHeight)-ourRoom[majorLength]-1);
+                ourRoom[minorAxis] = clamp(ourRoom[minorAxis], 1, (minorAxis === "y" ? levelHeight : levelWidth)-ourRoom[minorLength]-1);
 
                 // TODO: check if intersects
-                levelCavities.push(ourCavity);
+                levelRooms.push(ourRoom);
+
+                // place hallway between em too! since we're here lol
+                if(doRoomsTouch(relToRoom, ourRoom)) {
+                    const ourHallway = new Cavity();
+                    // TODO: fix up
+                    ourHallway[majorAxis] = ourRoom[majorAxis];
+                    ourHallway[minorAxis] = ourRoom[minorAxis] + Math.floor(newMinorValue * 0.75);
+                    ourHallway.w = (majorLength === "w" ? Math.abs(relToRoom.x - ourRoom.x) : hallwaySize);
+                    ourHallway.h = (majorLength === "h" ? Math.abs(relToRoom.y - ourRoom.y) : hallwaySize);
+
+                    levelHallways.push(ourHallway);
+                }
+
+                function doRoomsTouch(boxA, boxB) {
+                    return (Math.abs(boxA.x - boxB.x) * 2 <= (boxA.w + boxB.w)) && (Math.abs(boxA.y - boxB.y) * 2 <= (boxA.h + boxB.h));
+                }
             }
 
-            // Since all our "cavities" 
+            // Since all our "cavities" are able to connec to a straight line to its previous cavity, we can link all of them up relatively cost-effectively
+
         })();
 
         (function createSpawnObjective() {
