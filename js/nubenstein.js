@@ -36,17 +36,20 @@ function nubenstein() {
     const levelLegend = {
         solidMiddle: new LevelLegendElementCreator("M", 1),
         solidWall: new LevelLegendElementCreator("W", 16), // a wall has at least one side that is exposed to the open
-        solidDoor: new LevelLegendElementCreator("D", 8),
+        solidDoor: new LevelLegendElementCreator("D", 2), // 2 variants, even numbers (eg 0, 2) will be horizontal (slides open along x) and odds will be vertical variants
         solidObjective: new LevelLegendElementCreator("O", 16), // that elevator at the end of a level
-        openSpawn: new LevelLegendElementCreator("s", 1),
-        openMiddle: new LevelLegendElementCreator(" ", 1),
-        openDoor: new LevelLegendElementCreator("d", 8),
-        openHallway: new LevelLegendElementCreator("'", 1)
+        solidSpawn: new LevelLegendElementCreator("S", 16), // visual block
+        openSpawn: new LevelLegendElementCreator("s", 1), // the place where the player will pop in
+        openMiddle: new LevelLegendElementCreator(" ", 16), // 
+        openDoor: new LevelLegendElementCreator("d", 2),
+        openHallway: new LevelLegendElementCreator("'", 1),
+        openEnemySpawn: new LevelLegendElementCreator("e", 16),
+        openPickup: new LevelLegendElementCreator("p", 16)
     };
 
     // webgl 1.0 only has a max index count of an ebo to be a ushort (65535) :(
-    const levelWidth = 64;
-    const levelHeight = 128;
+    const levelWidth = 128;
+    const levelHeight = 32;
     let levelNumber = 1;
     // array of chars corresponding to that legend
     let levelGrid = [];
@@ -74,9 +77,10 @@ function nubenstein() {
 
         (function createRoomsAndHallways() {
             // Plonk some cavities, see if they overlap, if so, discard, if not, insert it into level
-            const maxRoomCount = prng.nextInRangeRound(Math.min(levelWidth, levelHeight), Math.max(levelWidth, levelHeight))*1.5;
+            const maxRoomCount = prng.nextInRangeRound(Math.min(levelWidth, levelHeight), Math.max(levelWidth, levelHeight)) * 1.5;
             const minRoomWH = 2;
             const maxRoomWH = 6; // exclusive
+            const roomSpreadOutness = prng.nextInRangeRound(2, 8);
             const hallwaySize = 1; // "width" if its from your perspective
 
             function Cavity(x, y, w, h) {
@@ -99,7 +103,7 @@ function nubenstein() {
                 }
 
                 // shift this cavity to north, south, west, east of the last inserted cavity
-                const lastRoomRef = levelRooms[levelRooms.length-1];
+                const lastRoomRef = levelRooms[levelRooms.length - 1];
                 roomTry.x = lastRoomRef.x;
                 roomTry.y = lastRoomRef.y;
                 let directionTry;
@@ -111,7 +115,7 @@ function nubenstein() {
 
                 // positive x = >
                 // positive y = V
-                switch (directionTry) { 
+                switch (directionTry) {
                     case 0:
                         placeNewRoomAndHallway(lastRoomRef, roomTry, "x", "y", true, "w", "h");
                         break;
@@ -140,30 +144,30 @@ function nubenstein() {
                     }
                 }
             }
-            fillGrid(levelRooms, "openMiddle");            
             fillGrid(levelHallways, "openHallway");
+            fillGrid(levelRooms, "openMiddle");
 
             console.log(levelHallways);
 
             function placeNewRoomAndHallway(relToRoom, ourRoom, majorAxis /*string, pass it "x" for example*/, minorAxis /*the one to just offset it to give randomness*/, isPlus /*bool*/, majorLength, minorLength /*string of either W or H*/) {
-                let newMajorValue = prng.nextInRangeRound(ourRoom[majorLength], ourRoom[majorLength] * 4);
+                let newMajorValue = prng.nextInRangeRound(ourRoom[majorLength], ourRoom[majorLength] * roomSpreadOutness + prng.nextInRangeRound(0, Math.min(levelWidth, levelHeight)*prng.nextInRange(0,2)));
                 let newMinorValue = prng.nextInRangeRound(Math.ceil(-relToRoom[minorLength] / 4), Math.ceil(relToRoom[minorLength] / 2));
-                
+
                 ourRoom[majorAxis] += (isPlus ? newMajorValue : -newMajorValue);
                 ourRoom[minorAxis] += newMinorValue;
 
-                ourRoom[majorAxis] = clamp(ourRoom[majorAxis], 1, (majorAxis === "x" ? levelWidth : levelHeight)-ourRoom[majorLength]-1);
-                ourRoom[minorAxis] = clamp(ourRoom[minorAxis], 1, (minorAxis === "y" ? levelHeight : levelWidth)-ourRoom[minorLength]-1);
+                ourRoom[majorAxis] = clamp(ourRoom[majorAxis], 1, (majorAxis === "x" ? levelWidth : levelHeight) - ourRoom[majorLength] - 1);
+                ourRoom[minorAxis] = clamp(ourRoom[minorAxis], 1, (minorAxis === "y" ? levelHeight : levelWidth) - ourRoom[minorLength] - 1);
 
                 // TODO: check if intersects
                 levelRooms.push(ourRoom);
 
                 // place hallway between em too! since we're here lol
-                if(!doRoomsTouch(relToRoom, ourRoom)) {
+                if (!doRoomsTouch(relToRoom, ourRoom)) {
                     const ourHallway = new Cavity();
                     // TODO: fix up
                     ourHallway[majorAxis] = (!isPlus ? ourRoom[majorAxis] : ourRoom[majorAxis] - Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]));
-                    ourHallway[minorAxis] = ourRoom[minorAxis];
+                    ourHallway[minorAxis] = ourRoom[minorAxis] + Math.round(newMinorValue * 0.5);
                     ourHallway[majorLength] = Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]) + 1;
                     ourHallway[minorLength] = hallwaySize;
 
@@ -176,16 +180,69 @@ function nubenstein() {
             }
         })();
 
-        (function createSpawnObjective() {
-
-        })();
-
-        (function createWallFiller() {
+        (function createMiddleFiller() {
             for (let i = 0; i < levelWidth * levelHeight; i++) {
                 if (!newLevelGrid[i]) {
                     newLevelGrid[i] = levelLegend.solidMiddle.create(0);
                 }
             }
+        })();
+
+        (function createWalls() {
+            // not all cells may be initialised, so just to keep it safe, i'll use a classic for loop instead of a for of loop
+            for (let x = 0; x < levelWidth; x++) {
+                let createdWall = levelLegend.solidWall.create(prng.nextInRangeRound(0, levelLegend.solidWall.variants));
+                for (let y = 0; y < levelHeight; y++) {
+                    if (x === 0 || y === 0 || x === levelWidth-1 || y === levelHeight-1) {
+                        // sometimes the hallway can poke out of the "boundary", leaking into the void, just seal up the flipping box
+                        newLevelGrid[x + levelWidth * y] = createdWall;
+                    }
+                    else if (newLevelGrid[x + levelWidth * y].icon === levelLegend.openMiddle.icon || newLevelGrid[x + levelWidth * y].icon === levelLegend.openHallway.icon) {
+                        // for some reason, if i put all those 4 cases into one switch statement, it just won't work properly lol
+                        // TODO: too lazy to make this a bunch of if's instead of this monstrosity
+                        switch(levelLegend.solidMiddle.icon) {
+                            case newLevelGrid[(x+1) + levelWidth * y].icon:
+                                newLevelGrid[(x+1) + levelWidth * y] = createdWall;
+                                break;
+                        }
+                        switch(levelLegend.solidMiddle.icon) {
+                            case newLevelGrid[(x-1) + levelWidth * y].icon:
+                                newLevelGrid[(x-1) + levelWidth * y] = createdWall;
+                                break;
+                        }
+                        switch(levelLegend.solidMiddle.icon) {
+                            case newLevelGrid[x + levelWidth * (y+1)].icon:
+                                newLevelGrid[x + levelWidth * (y+1)] = createdWall;
+                                break;
+                        }
+                        switch(levelLegend.solidMiddle.icon) {
+                            case newLevelGrid[x + levelWidth * (y-1)].icon:
+                                newLevelGrid[x + levelWidth * (y-1)] = createdWall;
+                                break;
+                        }                        
+                    }
+                }
+            }
+        })();
+
+        (function createDoors() {
+            // sees if both the left and right, or above and below blocks are walls, if so, place a door
+            // i don't want too many doors lol, so let's just sample in chunks, like one door per 8x8
+            const chunkSize = 8;
+            
+            for(let chunkX = 0; chunkX < levelWidth; chunkX+=chunkSize) {
+                for(let chunkY = 0; chunkY < levelHeight; chunkY+=chunkSize) {
+                    for(let x = chunkX; x < chunkX+chunkSize; x++) {
+                        for(let y = chunkY; y < chunkY+chunkSize; y++) {
+                            
+                        }
+                    }
+                }
+            }
+        })();
+
+        (function createSpawnObjective() {
+            // TODO
         })();
 
         function printGrid(aspect) {
@@ -194,7 +251,7 @@ function nubenstein() {
             for (let i = 0; i < levelHeight; i++) {
                 strings[i] = "";
                 for (let x = 0; x < levelWidth; x++) {
-                    strings[i] += newLevelGrid[x + levelWidth * i][aspect] + newLevelGrid[x + levelWidth * i][aspect];
+                    strings[i] += newLevelGrid[x + levelWidth * i][aspect];
                 }
                 strings[i] += i.toString();
                 console.log(strings[i]);
@@ -208,7 +265,7 @@ function nubenstein() {
             console.log(legendString);
         }
         printGrid("icon");
-        // printGrid("variant");
+        printGrid("variant");
 
         levelGrid = newLevelGrid.slice();
     }
@@ -245,7 +302,7 @@ function nubenstein() {
             return this.next() * (max - min) + min;
         }
 
-        this.nextInRangeFloor = function(min, max) {
+        this.nextInRangeFloor = function (min, max) {
             return Math.floor(this.nextInRange(min, max));
         }
 
