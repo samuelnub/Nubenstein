@@ -19,6 +19,10 @@ function nubenstein() {
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(fov, width / height, 0.01, 1000);
+
+    const sceneHUD = new THREE.Scene();
+    const cameraHUD = new THREE.OrthographicCamera(width / -2, width / 2, height / 2, height / -2, 0.01, 1000);
+
     const renderer = new THREE.WebGLRenderer();
 
     const controls = {
@@ -48,32 +52,50 @@ function nubenstein() {
     };
 
     // webgl 1.0 only has a max index count of an ebo to be a ushort (65535) :(
-    const levelWidth = 128;
+    const levelWidth = 32;
     const levelHeight = 32;
-    let levelNumber = 1;
+    let levelNumber = -1; // 0 indexed, starts out at -1, then nextLevel will make it 0
     // array of chars corresponding to that legend
     let levelGrid = [];
 
     const prng = new PRNG((nubElement.getAttribute("seed") ? nubElement.getAttribute("seed") : Math.random() * (10000 - 1) + 1));
 
+    const levelSeeds = [];
+
     // Main looping functions, logic and listener functions
     (function setup() {
-        renderer.setSize(width, height);
-        renderer.domElement.setAttribute("id", "nubensteinCanvas");
-        renderer.domElement.setAttribute("tabindex", "0");
-        renderer.domElement.focus();
-        renderer.setClearColor(0XDEADBE, 1);
-        nubElement.appendChild(renderer.domElement);
+        (function setupRenderer() {
+            renderer.setSize(width, height);
+            renderer.domElement.setAttribute("id", "nubensteinCanvas");
+            renderer.domElement.setAttribute("tabindex", "0");
+            renderer.domElement.focus();
+            renderer.setClearColor(0XDEADBE, 1);
+            nubElement.appendChild(renderer.domElement);
+        })();
 
         renderer.domElement.addEventListener("keydown", function (event) {
             console.log(event.key);
         });
 
-        createLevel();
+        nextLevel();
     })();
+
+    function nextLevel() {
+        levelNumber++;
+        levelSeeds[levelNumber] = prng.seed;
+        createLevel();
+    }
 
     function createLevel() {
         const newLevelGrid = [];
+
+        function Box(x, y, w, h) {
+            this.x = x;
+            this.y = y;
+            this.w = w;
+            this.h = h;
+            // this.dirMoved; // refer to below's switch case. relative to last square in list. the first one in the array should be undefined
+        }
 
         (function createRoomsAndHallways() {
             // Plonk some cavities, see if they overlap, if so, discard, if not, insert it into level
@@ -83,20 +105,12 @@ function nubenstein() {
             const roomSpreadOutness = prng.nextInRangeRound(2, 8);
             const hallwaySize = 1; // "width" if its from your perspective
 
-            function Cavity(x, y, w, h) {
-                this.x = x;
-                this.y = y;
-                this.w = w;
-                this.h = h;
-                this.dirMoved; // refer to below's switch case. relative to last square in list. the first one in the array should be undefined
-            }
-
             let levelRooms = [];
             let levelHallways = [];
 
             for (let curRoomTry = 0; curRoomTry < maxRoomCount; curRoomTry++) {
                 // These maps are pretty small, so fancy spatial partitioning isn't really needed
-                const roomTry = new Cavity(prng.nextInRangeRound(levelWidth / 2 - minRoomWH, levelWidth / 2 + minRoomWH), prng.nextInRangeRound(levelWidth / 2 - minRoomWH, levelWidth / 2 + minRoomWH), prng.nextInRangeRound(minRoomWH, maxRoomWH), prng.nextInRangeRound(minRoomWH, maxRoomWH));
+                const roomTry = new Box(prng.nextInRangeRound(levelWidth / 2 - minRoomWH, levelWidth / 2 + minRoomWH), prng.nextInRangeRound(levelWidth / 2 - minRoomWH, levelWidth / 2 + minRoomWH), prng.nextInRangeRound(minRoomWH, maxRoomWH), prng.nextInRangeRound(minRoomWH, maxRoomWH));
                 if (levelRooms.length === 0) {
                     levelRooms.push(roomTry);
                     continue;
@@ -150,7 +164,7 @@ function nubenstein() {
             console.log(levelHallways);
 
             function placeNewRoomAndHallway(relToRoom, ourRoom, majorAxis /*string, pass it "x" for example*/, minorAxis /*the one to just offset it to give randomness*/, isPlus /*bool*/, majorLength, minorLength /*string of either W or H*/) {
-                let newMajorValue = prng.nextInRangeRound(ourRoom[majorLength], ourRoom[majorLength] * roomSpreadOutness + prng.nextInRangeRound(0, Math.min(levelWidth, levelHeight)*prng.nextInRange(0,2)));
+                let newMajorValue = prng.nextInRangeRound(ourRoom[majorLength], ourRoom[majorLength] * roomSpreadOutness + prng.nextInRangeRound(0, Math.min(levelWidth, levelHeight)*prng.nextInRange(0,1)));
                 let newMinorValue = prng.nextInRangeRound(Math.ceil(-relToRoom[minorLength] / 4), Math.ceil(relToRoom[minorLength] / 2));
 
                 ourRoom[majorAxis] += (isPlus ? newMajorValue : -newMajorValue);
@@ -164,8 +178,8 @@ function nubenstein() {
 
                 // place hallway between em too! since we're here lol
                 if (!doRoomsTouch(relToRoom, ourRoom)) {
-                    const ourHallway = new Cavity();
-                    // TODO: fix up
+                    const ourHallway = new Box();
+                    
                     ourHallway[majorAxis] = (!isPlus ? ourRoom[majorAxis] : ourRoom[majorAxis] - Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]));
                     ourHallway[minorAxis] = ourRoom[minorAxis] + Math.round(newMinorValue * 0.5);
                     ourHallway[majorLength] = Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]) + 1;
@@ -190,6 +204,7 @@ function nubenstein() {
 
         (function createWalls() {
             // not all cells may be initialised, so just to keep it safe, i'll use a classic for loop instead of a for of loop
+            // TODO: make it prettier by making each wall have similar variations
             for (let x = 0; x < levelWidth; x++) {
                 let createdWall = levelLegend.solidWall.create(prng.nextInRangeRound(0, levelLegend.solidWall.variants));
                 for (let y = 0; y < levelHeight; y++) {
@@ -234,7 +249,21 @@ function nubenstein() {
                 for(let chunkY = 0; chunkY < levelHeight; chunkY+=chunkSize) {
                     for(let x = chunkX; x < chunkX+chunkSize; x++) {
                         for(let y = chunkY; y < chunkY+chunkSize; y++) {
-                            
+                            if(x === 0 || y === 0 || x === levelWidth-1 || y === levelHeight-1) {
+                                break;
+                            }
+                            // if left and right are walls, and top and bottom not a wall, and current is a hallway
+                            if(newLevelGrid[(x+1) + levelWidth * y].icon === levelLegend.solidWall.icon && newLevelGrid[(x-1) + levelWidth * y].icon === levelLegend.solidWall.icon && newLevelGrid[x + levelWidth * (y+1)].icon !== levelLegend.solidWall.icon && newLevelGrid[x + levelWidth * (y-1)].icon !== levelLegend.solidWall.icon && newLevelGrid[x + levelWidth * y].icon === levelLegend.openHallway.icon) {
+                                // even number, so variant total/2 - get random from that range, and multiply by 2
+                                newLevelGrid[x + levelWidth * y] = levelLegend.solidDoor.create(prng.nextInRangeRound(0, levelLegend.solidDoor.variants*0.5)*2);
+                                x = levelWidth; // cheap way to break out of nested loop
+                                y = levelHeight;
+                            }
+                            else if(newLevelGrid[x + levelWidth * (y+1)].icon === levelLegend.solidWall.icon && newLevelGrid[x + levelWidth * (y-1)].icon === levelLegend.solidWall.icon && newLevelGrid[(x+1) + levelWidth * y].icon !== levelLegend.solidWall.icon && newLevelGrid[(x-1) + levelWidth * y].icon !== levelLegend.solidWall.icon && newLevelGrid[x + levelWidth * y].icon === levelLegend.openHallway.icon) {
+                                newLevelGrid[x + levelWidth * y] = levelLegend.solidDoor.create(prng.nextInRangeFloor(1, levelLegend.solidDoor.variants*0.5)*2-1);
+                                x = levelWidth;
+                                y = levelHeight;
+                            }
                         }
                     }
                 }
@@ -267,6 +296,77 @@ function nubenstein() {
         printGrid("icon");
         printGrid("variant");
 
+        (function createScene() {
+            // ooh, actual "3d" stuff
+            (function clearScene() {
+                for(let i = scene.children.length-1; i >= 0; i--) {
+                    // removes everything, including camera!
+                    // you could do an if statement here to see if its the camera object
+                    if(scene.children[i] !== camera) {
+                        scene.children.remove(scene.children[i]);
+                    }
+                }
+            })();
+
+            const textures = createTextures();
+            function createTextures() {
+                const texSize = 64;
+                const maxColourDiff = 16; // colour values can go +- up to this amount
+
+                // I really don't know why I'm using RGBA for smack-dab opaque bricks...
+                function ColourRGBA(r, g, b, a) {
+                    this.r = r;
+                    this.g = g;
+                    this.b = b;
+                    this.a = a; // 0 to 255, surprisingly, and not from 0-1 since its - well an array of uints
+                }
+
+                const colourTheme = new ColourRGBA(prng.nextInRangeRound(maxColourDiff*2, 255-maxColourDiff*2), prng.nextInRangeRound(maxColourDiff*2, 255-maxColourDiff*2), prng.nextInRangeRound(maxColourDiff*2, 255-maxColourDiff*2), 255);
+
+                // tile sheets will go from left to right
+                let wallData = new Uint8Array((texSize * levelLegend.solidWall.variants) * texSize * 4); // 4 for rgba components
+
+                (function createWallTextures() {
+                    const brickWidth = prng.nextInRangeRound(4, 10);
+                    const brickHeight = prng.nextInRangeRound(2, 6);
+                    const fillerSize = prng.nextInRangeRound(1, 2);
+                    
+                    for(let variantX = 0; variantX < levelLegend.solidWall.variants*texSize; variantX+=texSize) {
+                        
+                    }
+                })();
+
+                return {
+
+                };
+            }
+
+            (function createWallGeometry() {
+                // custom vbos here we go buddy https://threejs.org/docs/#Reference/Core/BufferGeometry
+                // so doors (which have moving geometry) will not be part of this whole thing
+                // https://scottbyrns.atlassian.net/wiki/display/THREEJS/Working+with+BufferGeometry
+                const levelGeometry = new THREE.BufferGeometry();
+
+                const levelPositions = new Float32Array([]);
+                const levelNormals = new Float32Array([]);
+                const levelUVs = new Float32Array([]);
+                const levelIndices = new Float32Array([]);
+                for (let x = 0; x < levelWidth; x++) {
+                    for (let y = 0; y < levelHeight; y++) {
+                        if (newLevelGrid[x + levelWidth * y].icon === levelLegend.solidWall.icon) {
+                            // can't really just use "if this block is === open middle and open hallway, cause the open spawnpint and other stuff will conflict
+                            if (x !== levelWidth-1 && (newLevelGrid[(x+1) + levelWidth * y].icon !== levelLegend.solidWall.icon || newLevelGrid[(x+1) + levelWidth * y].icon !== levelLegend.solidWall.icon)) {
+
+                            }
+                        }
+                    }
+                }
+            })();
+
+            // TODO: remember to give your eventual mesh a name!
+
+        })();
+
         levelGrid = newLevelGrid.slice();
     }
 
@@ -274,6 +374,33 @@ function nubenstein() {
         fov = (typeof (newFov) === "number" ? newFov : this.fov);
         camera.fov = this.fov;
         camera.updateProjectionMatrix();
+        return newFov;
+    }
+
+    function createTextSprite(message, fontsize, colour /*pass in an object with an r,g,b,a component*/, font) {
+        let ctx;
+        let texture;
+        let sprite;
+        let spriteMat;
+        let canvas = document.createElement("canvas");
+        
+        ctx = canvas.getContext("2d");
+        ctx.font = fontsize + "px " + (font ? font : "Courier");
+
+        canvas.width = ctx.measureText(message).width;
+        canvas.height = fontsize * 2; // can be any multiplier, 2 seems reasonable
+
+        ctx.font = fontsize + "px " + (font ? font : "Courier"); // not very DRY :(
+        ctx.fillStyle = "rgba(" + colour.r + "," + colour.g + "," + colour.b + "," + colour.a + ")";
+        ctx.fillText(message, 0, fontsize);
+
+        texture = new THREE.Texture(canvas);
+        texture.minFilter = THREE.LinearFilter;
+        texture.needsUpdate = true;
+
+        spriteMat = new THREE.SpriteMaterial({map: texture});
+        sprite = new THREE.Sprite(spriteMat);
+        return sprite;
     }
 
     function LevelLegendElementCreator(icon, variants) {

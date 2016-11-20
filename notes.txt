@@ -1,0 +1,12 @@
+18 Nov 2016
+Places rooms down, each successive room has an x and y coordinate that is still going to 
+be reachable to the previous room with a straight line, and hallways will also be placed 
+down in the process, connecting all the rooms together in a "semi-random looking way"
+
+19 Nov 2016
+Uh, sloppy wall and door placement, will try to make it produce more visually appealing 
+results. maybe by placing these walls before we finish room creation
+
+20 Nov 2016
+Ohh cool, you could achieve "layered" rendering with multiple scenes 
+https://github.com/mrdoob/three.js/issues/1959
