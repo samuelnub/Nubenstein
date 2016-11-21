@@ -164,7 +164,7 @@ function nubenstein() {
             console.log(levelHallways);
 
             function placeNewRoomAndHallway(relToRoom, ourRoom, majorAxis /*string, pass it "x" for example*/, minorAxis /*the one to just offset it to give randomness*/, isPlus /*bool*/, majorLength, minorLength /*string of either W or H*/) {
-                let newMajorValue = prng.nextInRangeRound(ourRoom[majorLength], ourRoom[majorLength] * roomSpreadOutness + prng.nextInRangeRound(0, Math.min(levelWidth, levelHeight)*prng.nextInRange(0,1)));
+                let newMajorValue = prng.nextInRangeRound(ourRoom[majorLength], ourRoom[majorLength] * roomSpreadOutness + prng.nextInRangeRound(0, Math.min(levelWidth, levelHeight) * prng.nextInRange(0, 1)));
                 let newMinorValue = prng.nextInRangeRound(Math.ceil(-relToRoom[minorLength] / 4), Math.ceil(relToRoom[minorLength] / 2));
 
                 ourRoom[majorAxis] += (isPlus ? newMajorValue : -newMajorValue);
@@ -179,7 +179,7 @@ function nubenstein() {
                 // place hallway between em too! since we're here lol
                 if (!doRoomsTouch(relToRoom, ourRoom)) {
                     const ourHallway = new Box();
-                    
+
                     ourHallway[majorAxis] = (!isPlus ? ourRoom[majorAxis] : ourRoom[majorAxis] - Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]));
                     ourHallway[minorAxis] = ourRoom[minorAxis] + Math.round(newMinorValue * 0.5);
                     ourHallway[majorLength] = Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]) + 1;
@@ -208,33 +208,33 @@ function nubenstein() {
             for (let x = 0; x < levelWidth; x++) {
                 let createdWall = levelLegend.solidWall.create(prng.nextInRangeRound(0, levelLegend.solidWall.variants));
                 for (let y = 0; y < levelHeight; y++) {
-                    if (x === 0 || y === 0 || x === levelWidth-1 || y === levelHeight-1) {
+                    if (x === 0 || y === 0 || x === levelWidth - 1 || y === levelHeight - 1) {
                         // sometimes the hallway can poke out of the "boundary", leaking into the void, just seal up the flipping box
                         newLevelGrid[x + levelWidth * y] = createdWall;
                     }
                     else if (newLevelGrid[x + levelWidth * y].icon === levelLegend.openMiddle.icon || newLevelGrid[x + levelWidth * y].icon === levelLegend.openHallway.icon) {
                         // for some reason, if i put all those 4 cases into one switch statement, it just won't work properly lol
                         // TODO: too lazy to make this a bunch of if's instead of this monstrosity
-                        switch(levelLegend.solidMiddle.icon) {
-                            case newLevelGrid[(x+1) + levelWidth * y].icon:
-                                newLevelGrid[(x+1) + levelWidth * y] = createdWall;
+                        switch (levelLegend.solidMiddle.icon) {
+                            case newLevelGrid[(x + 1) + levelWidth * y].icon:
+                                newLevelGrid[(x + 1) + levelWidth * y] = createdWall;
                                 break;
                         }
-                        switch(levelLegend.solidMiddle.icon) {
-                            case newLevelGrid[(x-1) + levelWidth * y].icon:
-                                newLevelGrid[(x-1) + levelWidth * y] = createdWall;
+                        switch (levelLegend.solidMiddle.icon) {
+                            case newLevelGrid[(x - 1) + levelWidth * y].icon:
+                                newLevelGrid[(x - 1) + levelWidth * y] = createdWall;
                                 break;
                         }
-                        switch(levelLegend.solidMiddle.icon) {
-                            case newLevelGrid[x + levelWidth * (y+1)].icon:
-                                newLevelGrid[x + levelWidth * (y+1)] = createdWall;
+                        switch (levelLegend.solidMiddle.icon) {
+                            case newLevelGrid[x + levelWidth * (y + 1)].icon:
+                                newLevelGrid[x + levelWidth * (y + 1)] = createdWall;
                                 break;
                         }
-                        switch(levelLegend.solidMiddle.icon) {
-                            case newLevelGrid[x + levelWidth * (y-1)].icon:
-                                newLevelGrid[x + levelWidth * (y-1)] = createdWall;
+                        switch (levelLegend.solidMiddle.icon) {
+                            case newLevelGrid[x + levelWidth * (y - 1)].icon:
+                                newLevelGrid[x + levelWidth * (y - 1)] = createdWall;
                                 break;
-                        }                        
+                        }
                     }
                 }
             }
@@ -244,23 +244,23 @@ function nubenstein() {
             // sees if both the left and right, or above and below blocks are walls, if so, place a door
             // i don't want too many doors lol, so let's just sample in chunks, like one door per 8x8
             const chunkSize = 8;
-            
-            for(let chunkX = 0; chunkX < levelWidth; chunkX+=chunkSize) {
-                for(let chunkY = 0; chunkY < levelHeight; chunkY+=chunkSize) {
-                    for(let x = chunkX; x < chunkX+chunkSize; x++) {
-                        for(let y = chunkY; y < chunkY+chunkSize; y++) {
-                            if(x === 0 || y === 0 || x === levelWidth-1 || y === levelHeight-1) {
+
+            for (let chunkX = 0; chunkX < levelWidth; chunkX += chunkSize) {
+                for (let chunkY = 0; chunkY < levelHeight; chunkY += chunkSize) {
+                    for (let x = chunkX; x < chunkX + chunkSize; x++) {
+                        for (let y = chunkY; y < chunkY + chunkSize; y++) {
+                            if (x === 0 || y === 0 || x === levelWidth - 1 || y === levelHeight - 1) {
                                 break;
                             }
                             // if left and right are walls, and top and bottom not a wall, and current is a hallway
-                            if(newLevelGrid[(x+1) + levelWidth * y].icon === levelLegend.solidWall.icon && newLevelGrid[(x-1) + levelWidth * y].icon === levelLegend.solidWall.icon && newLevelGrid[x + levelWidth * (y+1)].icon !== levelLegend.solidWall.icon && newLevelGrid[x + levelWidth * (y-1)].icon !== levelLegend.solidWall.icon && newLevelGrid[x + levelWidth * y].icon === levelLegend.openHallway.icon) {
+                            if (newLevelGrid[(x + 1) + levelWidth * y].icon === levelLegend.solidWall.icon && newLevelGrid[(x - 1) + levelWidth * y].icon === levelLegend.solidWall.icon && newLevelGrid[x + levelWidth * (y + 1)].icon !== levelLegend.solidWall.icon && newLevelGrid[x + levelWidth * (y - 1)].icon !== levelLegend.solidWall.icon && newLevelGrid[x + levelWidth * y].icon === levelLegend.openHallway.icon) {
                                 // even number, so variant total/2 - get random from that range, and multiply by 2
-                                newLevelGrid[x + levelWidth * y] = levelLegend.solidDoor.create(prng.nextInRangeRound(0, levelLegend.solidDoor.variants*0.5)*2);
+                                newLevelGrid[x + levelWidth * y] = levelLegend.solidDoor.create(prng.nextInRangeRound(0, levelLegend.solidDoor.variants * 0.5) * 2);
                                 x = levelWidth; // cheap way to break out of nested loop
                                 y = levelHeight;
                             }
-                            else if(newLevelGrid[x + levelWidth * (y+1)].icon === levelLegend.solidWall.icon && newLevelGrid[x + levelWidth * (y-1)].icon === levelLegend.solidWall.icon && newLevelGrid[(x+1) + levelWidth * y].icon !== levelLegend.solidWall.icon && newLevelGrid[(x-1) + levelWidth * y].icon !== levelLegend.solidWall.icon && newLevelGrid[x + levelWidth * y].icon === levelLegend.openHallway.icon) {
-                                newLevelGrid[x + levelWidth * y] = levelLegend.solidDoor.create(prng.nextInRangeFloor(1, levelLegend.solidDoor.variants*0.5)*2-1);
+                            else if (newLevelGrid[x + levelWidth * (y + 1)].icon === levelLegend.solidWall.icon && newLevelGrid[x + levelWidth * (y - 1)].icon === levelLegend.solidWall.icon && newLevelGrid[(x + 1) + levelWidth * y].icon !== levelLegend.solidWall.icon && newLevelGrid[(x - 1) + levelWidth * y].icon !== levelLegend.solidWall.icon && newLevelGrid[x + levelWidth * y].icon === levelLegend.openHallway.icon) {
+                                newLevelGrid[x + levelWidth * y] = levelLegend.solidDoor.create(prng.nextInRangeFloor(1, levelLegend.solidDoor.variants * 0.5) * 2 - 1);
                                 x = levelWidth;
                                 y = levelHeight;
                             }
@@ -299,16 +299,15 @@ function nubenstein() {
         (function createScene() {
             // ooh, actual "3d" stuff
             (function clearScene() {
-                for(let i = scene.children.length-1; i >= 0; i--) {
+                for (let i = scene.children.length - 1; i >= 0; i--) {
                     // removes everything, including camera!
                     // you could do an if statement here to see if its the camera object
-                    if(scene.children[i] !== camera) {
-                        scene.children.remove(scene.children[i]);
+                    if (scene.children[i] !== camera) {
+                        //scene.children.remove(scene.children[i]);
                     }
                 }
             })();
 
-            const textures = createTextures();
             function createTextures() {
                 const texSize = 64;
                 const maxColourDiff = 16; // colour values can go +- up to this amount
@@ -321,25 +320,82 @@ function nubenstein() {
                     this.a = a; // 0 to 255, surprisingly, and not from 0-1 since its - well an array of uints
                 }
 
-                const colourTheme = new ColourRGBA(prng.nextInRangeRound(maxColourDiff*2, 255-maxColourDiff*2), prng.nextInRangeRound(maxColourDiff*2, 255-maxColourDiff*2), prng.nextInRangeRound(maxColourDiff*2, 255-maxColourDiff*2), 255);
+                const colourTheme = new ColourRGBA(prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 4), prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 4), prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 4), 255);
 
-                // tile sheets will go from left to right
-                let wallData = new Uint8Array((texSize * levelLegend.solidWall.variants) * texSize * 4); // 4 for rgba components
-
-                (function createWallTextures() {
-                    const brickWidth = prng.nextInRangeRound(4, 10);
-                    const brickHeight = prng.nextInRangeRound(2, 6);
-                    const fillerSize = prng.nextInRangeRound(1, 2);
+                function createWallTextures() {
+                    // will return an array containing already-complete threejs textures
+                    const brickWidth = prng.nextInRangeRound(3, 6) * 2 - 1;
+                    const brickHeight = 4;
+                    const fillerSize = 1;
+                    const fillerColour = new ColourRGBA(16, 16, 16, 255);
                     
-                    for(let variantX = 0; variantX < levelLegend.solidWall.variants*texSize; variantX+=texSize) {
+                    const wallTextures = [];
+
+                    for(let variant = 0; variant < levelLegend.solidWall.variants; variant++) {
+                        let wallData = new Uint8Array(texSize * texSize * 4); // 4 for rgba components
                         
+                        const bricks = [];
+
+                        let startMidway = false;
+                        for(let brickY = 0; brickY < texSize; brickY+=(brickHeight+fillerSize)) {
+                            for(let brickX = 0; brickX < texSize; brickX+=(brickWidth+fillerSize)) {
+                                bricks.push(new Box(
+                                    (brickX === 0 ? brickX : (startMidway ? brickX - Math.floor((brickWidth+fillerSize)/2) : brickX)),
+                                    brickY,
+                                    (startMidway ? (brickX === 0 ? Math.floor(brickWidth / 2) : (brickX+brickWidth+fillerSize < texSize ? brickWidth : (texSize-brickX)+Math.ceil((brickWidth+fillerSize)/2))) : (brickX+brickWidth+fillerSize < texSize ? brickWidth : texSize-(brickX+fillerSize))),
+                                    brickHeight
+                                ));
+
+                                bricks[bricks.length-1].colour = new ColourRGBA(prng.nextInRangeRound(colourTheme.r-maxColourDiff, colourTheme.r+maxColourDiff), prng.nextInRangeRound(colourTheme.g-maxColourDiff, colourTheme.g+maxColourDiff), prng.nextInRangeRound(colourTheme.b-maxColourDiff, colourTheme.b-maxColourDiff), colourTheme.a);
+                            }
+                            startMidway = !startMidway;
+                        }
+
+                        for(brick of bricks) {
+                            for(let x = brick.x; x < brick.x+brick.w; x++) {
+                                for(let y = brick.y; y < brick.y+brick.h; y++) {
+                                    wallData[4 * (x + texSize * y) + 0] = brick.colour.r;
+                                    wallData[4 * (x + texSize * y) + 1] = brick.colour.g;
+                                    wallData[4 * (x + texSize * y) + 2] = brick.colour.b;
+                                    wallData[4 * (x + texSize * y) + 3] = brick.colour.a;
+                                }
+                            }
+                        }
+
+                        for(let x = 0; x < texSize; x++) {
+                            for(let y = 0; y < texSize; y++) {
+                                if(!wallData[4 * (x + texSize * y) + 0] || !wallData[4 * (x + texSize * y) + 1] || !wallData[4 * (x + texSize * y) + 2] || !wallData[4 * (x + texSize * y) + 3]) {
+                                    wallData[4 * (x + texSize * y) + 0] = fillerColour.r;
+                                    wallData[4 * (x + texSize * y) + 1] = fillerColour.g;
+                                    wallData[4 * (x + texSize * y) + 2] = fillerColour.b;
+                                    wallData[4 * (x + texSize * y) + 3] = fillerColour.a;
+                                }
+                            }
+                        }
+
+                        wallTextures.push(new THREE.DataTexture(wallData, texSize, texSize, THREE.RGBAFormat, THREE.UnsignedByteType, THREE.UVMapping));
+                        wallTextures[wallTextures.length-1].needsUpdate = true;
                     }
-                })();
+
+                    return wallTextures;
+                }
 
                 return {
-
+                    walls: createWallTextures()
                 };
             }
+            const textures = createTextures();
+
+            (function texTest() {
+                let geometry = new THREE.PlaneGeometry(1, 1);
+                let mat = new THREE.MeshBasicMaterial({ map: textures.walls[0], side: THREE.DoubleSide, transparent: true });
+                mat.needsUpdate = true;
+                var mesh = new THREE.Mesh(geometry, mat);
+                mesh.name = "texTest";
+                scene.add(mesh);
+                camera.position.z = 1;
+
+            })();
 
             (function createWallGeometry() {
                 // custom vbos here we go buddy https://threejs.org/docs/#Reference/Core/BufferGeometry
@@ -355,7 +411,7 @@ function nubenstein() {
                     for (let y = 0; y < levelHeight; y++) {
                         if (newLevelGrid[x + levelWidth * y].icon === levelLegend.solidWall.icon) {
                             // can't really just use "if this block is === open middle and open hallway, cause the open spawnpint and other stuff will conflict
-                            if (x !== levelWidth-1 && (newLevelGrid[(x+1) + levelWidth * y].icon !== levelLegend.solidWall.icon || newLevelGrid[(x+1) + levelWidth * y].icon !== levelLegend.solidWall.icon)) {
+                            if (x !== levelWidth - 1 && (newLevelGrid[(x + 1) + levelWidth * y].icon !== levelLegend.solidWall.icon || newLevelGrid[(x + 1) + levelWidth * y].icon !== levelLegend.solidWall.icon)) {
 
                             }
                         }
@@ -383,7 +439,7 @@ function nubenstein() {
         let sprite;
         let spriteMat;
         let canvas = document.createElement("canvas");
-        
+
         ctx = canvas.getContext("2d");
         ctx.font = fontsize + "px " + (font ? font : "Courier");
 
@@ -398,7 +454,7 @@ function nubenstein() {
         texture.minFilter = THREE.LinearFilter;
         texture.needsUpdate = true;
 
-        spriteMat = new THREE.SpriteMaterial({map: texture});
+        spriteMat = new THREE.SpriteMaterial({ map: texture });
         sprite = new THREE.Sprite(spriteMat);
         return sprite;
     }
@@ -444,6 +500,9 @@ function nubenstein() {
 
     (function render() {
         requestAnimationFrame(render);
+
+        // TODO: just a test
+        scene.getObjectByName("texTest").rotation.y += 0.01;
 
         renderer.render(scene, camera);
     })();
