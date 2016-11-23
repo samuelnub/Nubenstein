@@ -1,0 +1,40 @@
+body {
+    margin: 0px;
+}
+
+div {
+    width: 100%;
+    text-align: center;
+}
+
+#nubensteinCanvas {
+    display: inline-block;
+    margin: 32px;
+    
+    animation-name: pleaseFocusOnMePlease;
+    animation-duration: 0.5s;
+    animation-iteration-count: infinite;
+    animation-timing-function: ease-in-out;
+}
+
+#nubensteinCanvas:focus {
+    animation: 0;
+}
+
+@keyframes pleaseFocusOnMePlease {
+    0% {
+        outline-style: solid;
+        outline-color: green;
+        outline-width: 0px;
+    }
+    50% {
+        outline-style: solid;
+        outline-color: red;
+        outline-width: 16px;
+    }
+    100% {
+        outline-style: solid;  
+        outline-color: blue;      
+        outline-width: 0px;
+    }
+}

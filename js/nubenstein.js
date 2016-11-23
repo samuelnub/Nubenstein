@@ -12,6 +12,8 @@ function nubenstein() {
         console.log("Couldn't find any element with an id of \"nubenstein\" in your DOM!");
         return;
     }
+    const debug = true;
+
     const width = (nubElement.getAttribute("width") ? nubElement.getAttribute("width") : 800);
     const height = (nubElement.getAttribute("height") ? nubElement.getAttribute("height") : 600);
 
@@ -24,13 +26,6 @@ function nubenstein() {
     const cameraHUD = new THREE.OrthographicCamera(width / -2, width / 2, height / 2, height / -2, 0.01, 1000);
 
     const renderer = new THREE.WebGLRenderer();
-
-    const controls = {
-        walkForward: "w",
-        walkBackward: "s",
-        walkLeft: "a",
-        walkRight: "d"
-    };
 
     let score = 0;
 
@@ -62,20 +57,15 @@ function nubenstein() {
 
     const levelSeeds = [];
 
+    const input = new Input();
+
     // Main looping functions, logic and listener functions
     (function setup() {
         (function setupRenderer() {
             renderer.setSize(width, height);
-            renderer.domElement.setAttribute("id", "nubensteinCanvas");
-            renderer.domElement.setAttribute("tabindex", "0");
-            renderer.domElement.focus();
             renderer.setClearColor(0XDEADBE, 1);
             nubElement.appendChild(renderer.domElement);
         })();
-
-        renderer.domElement.addEventListener("keydown", function (event) {
-            console.log(event.key);
-        });
 
         nextLevel();
     })();
@@ -324,7 +314,7 @@ function nubenstein() {
 
                 function createWallTextures() {
                     // will return an array containing already-complete threejs textures
-                    const brickWidth = prng.nextInRangeRound(3, 6) * 2 - 1;
+                    const brickWidth = prng.nextInRangeRound(3, 8) * 2 - 1;
                     const brickHeight = 4;
                     const fillerSize = 1;
                     const fillerColour = new ColourRGBA(16, 16, 16, 255);
@@ -354,9 +344,9 @@ function nubenstein() {
                         for(brick of bricks) {
                             for(let x = brick.x; x < brick.x+brick.w; x++) {
                                 for(let y = brick.y; y < brick.y+brick.h; y++) {
-                                    wallData[4 * (x + texSize * y) + 0] = brick.colour.r;
-                                    wallData[4 * (x + texSize * y) + 1] = brick.colour.g;
-                                    wallData[4 * (x + texSize * y) + 2] = brick.colour.b;
+                                    wallData[4 * (x + texSize * y) + 0] = brick.colour.r + prng.nextInRangeFloor(-maxColourDiff/2, maxColourDiff/2);
+                                    wallData[4 * (x + texSize * y) + 1] = brick.colour.g + prng.nextInRangeFloor(-maxColourDiff/2, maxColourDiff/2);
+                                    wallData[4 * (x + texSize * y) + 2] = brick.colour.b + prng.nextInRangeFloor(-maxColourDiff/2, maxColourDiff/2);
                                     wallData[4 * (x + texSize * y) + 3] = brick.colour.a;
                                 }
                             }
@@ -365,9 +355,9 @@ function nubenstein() {
                         for(let x = 0; x < texSize; x++) {
                             for(let y = 0; y < texSize; y++) {
                                 if(!wallData[4 * (x + texSize * y) + 0] || !wallData[4 * (x + texSize * y) + 1] || !wallData[4 * (x + texSize * y) + 2] || !wallData[4 * (x + texSize * y) + 3]) {
-                                    wallData[4 * (x + texSize * y) + 0] = fillerColour.r;
-                                    wallData[4 * (x + texSize * y) + 1] = fillerColour.g;
-                                    wallData[4 * (x + texSize * y) + 2] = fillerColour.b;
+                                    wallData[4 * (x + texSize * y) + 0] = fillerColour.r + prng.nextInRangeFloor(-maxColourDiff/2, maxColourDiff/2);
+                                    wallData[4 * (x + texSize * y) + 1] = fillerColour.g + prng.nextInRangeFloor(-maxColourDiff/2, maxColourDiff/2);
+                                    wallData[4 * (x + texSize * y) + 2] = fillerColour.b + prng.nextInRangeFloor(-maxColourDiff/2, maxColourDiff/2);
                                     wallData[4 * (x + texSize * y) + 3] = fillerColour.a;
                                 }
                             }
@@ -459,6 +449,10 @@ function nubenstein() {
         return sprite;
     }
 
+    function clamp(num, min, max) {
+        return num <= min ? min : num >= max ? max : num;
+    }
+
     function LevelLegendElementCreator(icon, variants) {
         this.icon = icon; // letter from "levelLegend"
         this.variants = variants; // numeric variant total if you wanna spiff things up
@@ -470,7 +464,7 @@ function nubenstein() {
                 icon: this.icon,
                 variant: (variant < variants && variant >= 0 ? variant : 0)
             };
-        }
+        };
     }
 
     function PRNG(initialSeed) {
@@ -479,27 +473,152 @@ function nubenstein() {
         this.next = function () {
             let x = Math.sin(this.seed++) * 10000;
             return x - Math.floor(x);
-        }
+        };
 
         this.nextInRange = function (min, max) {
             return this.next() * (max - min) + min;
-        }
+        };
 
         this.nextInRangeFloor = function (min, max) {
             return Math.floor(this.nextInRange(min, max));
-        }
+        };
 
         this.nextInRangeRound = function (min, max) {
             return Math.round(this.nextInRange(min, max));
-        }
+        };
     }
 
-    function clamp(num, min, max) {
-        return num <= min ? min : num >= max ? max : num;
+    function Input() {
+        this.controls = {
+            walkForward: "w",
+            walkBackward: "s",
+            walkLeft: "a",
+            walkRight: "d"
+        };
+
+        const keysHeld = [];
+        const buttonsHeld = [];
+        const mouseState = {
+            movedX: 0,
+            movedY: 0
+        };
+
+        let pointerLocked = false;
+
+        const time = {
+            date: new Date(),
+            delta: 0,
+            lastFrame: 0,
+            total: 0
+        };
+        
+        (function initInput() {
+            const element = renderer.domElement;
+
+            element.setAttribute("id", "nubensteinCanvas");
+            element.setAttribute("tabindex", "0");
+            element.focus();
+
+            element.addEventListener("mousedown", function(event) {
+                buttonsHeld[event.button] = true;
+            });
+
+            element.addEventListener("mouseup", function(event) {
+                buttonsHeld[event.button] = false;
+            });
+
+            element.addEventListener("keydown", function (event) {
+                keysHeld[event.key] = true;
+            });
+
+            element.addEventListener("keyup", function (event) {
+                keysHeld[event.key] = false;
+            });
+
+            element.addEventListener("focus", function (event) {
+                element.requestPointerLock = element.requestPointerLock || element.mozRequestPointerLock || element.webkitRequestPointerLock;
+                element.requestPointerLock();
+
+                element.addEventListener("mousemove", mousemoveCallback);
+            });
+
+            element.addEventListener("blur", function(event) {
+                document.exitPointerLock = document.exitPointerLock || document.mozExitPointerLock;
+                document.exitPointerLock();
+
+                element.removeEventListener("mousemove", mousemoveCallback);
+            });
+
+            (function setupPointerLockChange() {
+                document.addEventListener('pointerlockchange', changeCallback, false);
+                document.addEventListener('mozpointerlockchange', changeCallback, false);
+                document.addEventListener('webkitpointerlockchange', changeCallback, false);
+
+                function changeCallback() {
+                    if (document.pointerLockElement === element ||
+                        document.mozPointerLockElement === element ||
+                        document.webkitPointerLockElement === element) {
+                        pointerLocked = true;
+                    } 
+                    else {
+                        pointerLocked = false;
+                    }
+                }
+            })();
+
+            function mousemoveCallback(event) {
+                mouseState.movedX = event.movementX || 0;
+                mouseState.movedY = event.movementY || 0;
+
+                const timeoutTime = 17;
+                setTimeout(function() {
+                    mouseState.movedX = 0;
+                    mouseState.movedY = 0;
+                }, timeoutTime);
+            }
+        })();
+
+        this.isButtonHeld = function(key) {
+            return buttonsHeld[key];
+        }
+
+        this.isKeyHeld = function(key) {
+            return keysHeld[key];
+        };
+
+        this.mouseMoved = function() {
+            return mouseState;
+        }
+
+        this.isPointerLocked = function() {
+            return pointerLocked;
+        }
+
+        this.getTimeDelta = function() {
+            return time.delta;
+        }
+
+        this.getTimeTotal = function() {
+            return time.total;
+        }
+
+        this.tick = function() {
+            time.total = time.date.getTime();
+            time.delta = time.total - time.lastFrame;
+            time.lastFrame = time.total;
+        }
     }
 
     (function render() {
         requestAnimationFrame(render);
+
+        (function doMovement() {
+            input.tick();
+
+            if(debug) {
+
+            }
+        })();
 
         // TODO: just a test
         scene.getObjectByName("texTest").rotation.y += 0.01;
