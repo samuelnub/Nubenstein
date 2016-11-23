@@ -281,9 +281,11 @@ function nubenstein() {
             // ooh, actual "3d" stuff
             (function clearScene() {
                 for (let i = game.scene.children.length - 1; i >= 0; i--) {
+                    console.log("The scene contains:");
+                    console.log(game.scene.children[i]);
                     // removes everything, including camera!
                     // you could do an if statement here to see if its the camera object
-                    if (game.scene.children[i] !== camera) {
+                    if (game.scene.children[i] !== game.player.camera) {
                         //scene.children.remove(scene.children[i]);
                     }
                 }
@@ -373,7 +375,7 @@ function nubenstein() {
                 var mesh = new THREE.Mesh(geometry, mat);
                 mesh.name = "texTest";
                 game.scene.add(mesh);
-                
+
             })();
 
             (function createWallGeometry() {
@@ -596,8 +598,9 @@ function nubenstein() {
         // don't write to this externally, just a simple getter. set by using the func'
         this.fov = 75.0;
         this.camera = new THREE.PerspectiveCamera(this.fov, game.width / game.height, 0.01, 1000);
+        game.scene.add(this.camera);
 
-        this.camera.position.z = -1;
+        this.camera.position.z = 1;
 
         this.setFov = function(newFov) {
             fov = (typeof (newFov) === "number" ? newFov : this.fov);
