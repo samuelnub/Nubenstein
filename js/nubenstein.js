@@ -3,6 +3,10 @@
     threejsElement.type = "text/javascript";
     threejsElement.src = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r82/three.js";
     document.head.appendChild(threejsElement);
+
+    if(window.location.protocol === "file:") {
+        document.title = "Local Nubenstein";
+    }
 })();
 
 function nubenstein() {
@@ -53,6 +57,7 @@ function nubenstein() {
     // Main looping functions, logic and listener functions
     (function setup() {
         (function setupRenderer() {
+            game.renderer.setPixelRatio(window.devicePixelRatio);
             game.renderer.setSize(game.width, game.height);
             game.renderer.setClearColor(0XDEADBE, 1);
             nubElement.appendChild(game.renderer.domElement);
@@ -595,26 +600,50 @@ function nubenstein() {
     }
 
     function Player() {
-        // don't write to this externally, just a simple getter. set by using the func'
-        this.fov = 75.0;
-        this.camera = new THREE.PerspectiveCamera(this.fov, game.width / game.height, 0.01, 1000);
-        game.scene.add(this.camera);
+        const self = this;
 
-        this.camera.position.z = 1;
+        // don't write to self externally, just a simple getter. set by using the func'
+        self.fov = 75.0;
+        self.camera = new THREE.PerspectiveCamera(self.fov, game.width / game.height, 0.01, 1000);
+        game.scene.add(self.camera);
 
-        this.setFov = function(newFov) {
-            fov = (typeof (newFov) === "number" ? newFov : this.fov);
-            camera.fov = this.fov;
-            camera.updateProjectionMatrix();
+        self.camera.position.z = 1;
+
+        self.setFov = function(newFov) {
+            game.player.fov = (typeof (newFov) === "number" ? newFov : game.player.fov);
+            game.player.camera.fov = game.player.fov;
+            game.player.camera.updateProjectionMatrix();
             return newFov;
         }
 
-        this.tick = function() {
+        self.tick = function() {
             (function doMovement() {
                 if(game.input.isKeyHeld(game.input.config.walkForward)) {
 
                 }
+                if(game.input.isKeyHeld(game.input.config.walkBackward)) {
+
+                }
+                if(game.input.isKeyHeld(game.input.config.walkLeft)) {
+                    
+                }
+                if(game.input.isKeyHeld(game.input.config.walkRight)) {
+                    
+                }
             })();
+        };
+    }
+
+    function QuatTransformer(obj) {
+        // Component class for easier threejs object transformation
+        const self = this; // might be going a bit overboard with this whole "self" thing
+
+        self.object = obj;
+
+        self.object.useQuaternion = true;
+
+        self.recalc = function() {
+            // TODO: recalculating doohickeys
         };
     }
     

@@ -23,3 +23,15 @@ http://stackoverflow.com/questions/24961952/three-js-buffergeometry-and-textures
 22 Nov 2016
 input listeners and getters when you need 'em
 also just a tiny bit of css to make it centre aligned
+
+23 Nov 2016
+refactored a bit to make it less sprawled with gunk around the more "global namespace"
+Player class will handle the "you" definition within the game, in terms of moving and
+interacting
+hey look, its that cool guy i got the C++ opengl quaternion implementation from:
+http://hamelot.io/visualization/three-js-quaternion-camera/
+
+24 Nov 2016
+TIL of the "self" hack to get around js's - uh, let's just say, 'interesting' way of
+handling the "this" context
+well, i could use es6's arrow functions and using bind, but really? I just need it to work
