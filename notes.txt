@@ -35,3 +35,10 @@ http://hamelot.io/visualization/three-js-quaternion-camera/
 TIL of the "self" hack to get around js's - uh, let's just say, 'interesting' way of
 handling the "this" context
 well, i could use es6's arrow functions and using bind, but really? I just need it to work
+https://threejs.org/docs/#Reference/Core/Object3D
+in case you need to reference the docs. the lack of proper intellisense for libraries is
+sad, but kinda unavoidable
+
+25 Nov 2016
+transformer helper class, will contain checks for collisions in the future
+http://stackoverflow.com/questions/11119753/how-to-rotate-a-object-on-axis-world-three-js

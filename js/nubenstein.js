@@ -52,6 +52,7 @@ function nubenstein() {
         game.prng = new PRNG((nubElement.getAttribute("seed") ? nubElement.getAttribute("seed") : Math.random() * (10000 - 1) + 1));
         game.input = new Input();
         game.player = new Player();
+        game.transformer = new Transformer(); // "static" helper
     }
     
     // Main looping functions, logic and listener functions
@@ -483,14 +484,14 @@ function nubenstein() {
             walkBackward: "s",
             walkLeft: "a",
             walkRight: "d",
-            lookSensitivity: 10
+            lookSensitivity: 0.004
         };
 
         const keysHeld = [];
         const buttonsHeld = [];
-        const mouseState = {
-            movedX: 0,
-            movedY: 0
+        const mouseMove = {
+            x: 0,
+            y: 0
         };
 
         let pointerLocked = false;
@@ -557,14 +558,8 @@ function nubenstein() {
             })();
 
             function mousemoveCallback(event) {
-                mouseState.movedX = event.movementX || 0;
-                mouseState.movedY = event.movementY || 0;
-
-                const timeoutTime = 17;
-                setTimeout(function() {
-                    mouseState.movedX = 0;
-                    mouseState.movedY = 0;
-                }, timeoutTime);
+                mouseMove.x = event.movementX || 0;
+                mouseMove.y = event.movementY || 0;
             }
         })();
 
@@ -577,7 +572,7 @@ function nubenstein() {
         };
 
         this.mouseMoved = function() {
-            return mouseState;
+            return mouseMove;
         };
 
         this.isPointerLocked = function() {
@@ -596,7 +591,33 @@ function nubenstein() {
             time.total = time.date.getTime();
             time.delta = time.total - time.lastFrame;
             time.lastFrame = time.total;
+
+            mouseMove.x = 0;
+            mouseMove.y = 0;
         };
+    }
+
+    function Transformer() {
+        // helper class. i could use a const Transformer = ()(); for a "static" class, but heck, i dont want to put this definition at the front of the file
+        const self = this;
+
+        self.translateAddWorld = function(obj, vec) {
+            if(typeof obj !== "object") {
+                return;
+            }
+            // TODO: doohickeys
+        }
+
+        self.rotateAddWorld = function(obj, axis /*three vector3*/, rads /*very rad*/) {
+            if(typeof obj !== "object") {
+                return;
+            }
+            let rotMatWorld = new THREE.Matrix4();
+            rotMatWorld.makeRotationAxis(axis.normalize(), rads);
+            rotMatWorld.multiply(obj.matrix);
+            obj.matrix = rotMatWorld;
+            obj.rotation.setFromRotationMatrix(obj.matrix);
+        }
     }
 
     function Player() {
@@ -610,7 +631,7 @@ function nubenstein() {
         self.camera.position.z = 1;
 
         self.setFov = function(newFov) {
-            game.player.fov = (typeof (newFov) === "number" ? newFov : game.player.fov);
+            game.player.fov = (typeof newFov === "number" ? newFov : game.player.fov);
             game.player.camera.fov = game.player.fov;
             game.player.camera.updateProjectionMatrix();
             return newFov;
@@ -618,44 +639,47 @@ function nubenstein() {
 
         self.tick = function() {
             (function doMovement() {
-                if(game.input.isKeyHeld(game.input.config.walkForward)) {
+                if(!game.input.isPointerLocked()) {
+                    return;
+                }
 
+                // TODO: use transformer class to handle translation collisions with the levelGrid
+                if(game.input.isKeyHeld(game.input.config.walkForward)) {
+                    self.camera.translateZ(-0.1);
                 }
                 if(game.input.isKeyHeld(game.input.config.walkBackward)) {
-
+                    self.camera.translateZ(0.1);
                 }
                 if(game.input.isKeyHeld(game.input.config.walkLeft)) {
-                    
+                    self.camera.translateX(-0.1);                    
                 }
                 if(game.input.isKeyHeld(game.input.config.walkRight)) {
-                    
+                    self.camera.translateX(0.1);                   
                 }
+
+                if(game.input.isKeyHeld("i")) {
+                    console.log(self.camera.rotation.x);
+                    console.log(typeof self.camera);
+                }
+
+                // yaw
+                game.transformer.rotateAddWorld(self.camera, new THREE.Vector3(0.0, 1.0, 0.0), -game.input.mouseMoved().x * game.input.config.lookSensitivity);
+                
+                // pitch (shouldnt be in actual game)
+                self.camera.rotateX(-game.input.mouseMoved().y * game.input.config.lookSensitivity);
             })();
-        };
-    }
-
-    function QuatTransformer(obj) {
-        // Component class for easier threejs object transformation
-        const self = this; // might be going a bit overboard with this whole "self" thing
-
-        self.object = obj;
-
-        self.object.useQuaternion = true;
-
-        self.recalc = function() {
-            // TODO: recalculating doohickeys
         };
     }
     
     (function render() {
         requestAnimationFrame(render);
 
-        game.input.tick();
-
         game.player.tick();
 
         // TODO: just a test
         game.scene.getObjectByName("texTest").rotation.y += 0.01;
+
+        game.input.tick();
 
         game.renderer.render(game.scene, game.player.camera);
     })();
