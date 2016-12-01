@@ -318,11 +318,10 @@ function nubenstein() {
                     const fillerSize = 1;
                     const fillerColour = new ColourRGBA(16, 16, 16, 255);
 
-                    const wallTextures = [];
+                    let wallTexture;
+                    let wallData = new Uint8Array(texSize * texSize * 4 * game.levelLegend.solidWall.variants); // 4 for rgba components
 
-                    for (let variant = 0; variant < game.levelLegend.solidWall.variants; variant++) {
-                        let wallData = new Uint8Array(texSize * texSize * 4); // 4 for rgba components
-
+                    for (let variant = 0; variant < game.levelLegend.solidWall.variants * texSize; variant+=texSize) {
                         const bricks = [];
 
                         let startMidway = false;
@@ -342,7 +341,7 @@ function nubenstein() {
 
                         for (brick of bricks) {
                             for (let x = brick.x; x < brick.x + brick.w; x++) {
-                                for (let y = brick.y; y < brick.y + brick.h; y++) {
+                                for (let y = brick.y+variant; y < brick.y + brick.h+variant; y++) {
                                     wallData[4 * (x + texSize * y) + 0] = brick.colour.r + game.prng.nextInRangeFloor(-maxColourDiff / 2, maxColourDiff / 2);
                                     wallData[4 * (x + texSize * y) + 1] = brick.colour.g + game.prng.nextInRangeFloor(-maxColourDiff / 2, maxColourDiff / 2);
                                     wallData[4 * (x + texSize * y) + 2] = brick.colour.b + game.prng.nextInRangeFloor(-maxColourDiff / 2, maxColourDiff / 2);
@@ -352,7 +351,7 @@ function nubenstein() {
                         }
 
                         for (let x = 0; x < texSize; x++) {
-                            for (let y = 0; y < texSize; y++) {
+                            for (let y = variant; y < texSize+variant; y++) {
                                 if (!wallData[4 * (x + texSize * y) + 0] || !wallData[4 * (x + texSize * y) + 1] || !wallData[4 * (x + texSize * y) + 2] || !wallData[4 * (x + texSize * y) + 3]) {
                                     wallData[4 * (x + texSize * y) + 0] = fillerColour.r + game.prng.nextInRangeFloor(-maxColourDiff / 2, maxColourDiff / 2);
                                     wallData[4 * (x + texSize * y) + 1] = fillerColour.g + game.prng.nextInRangeFloor(-maxColourDiff / 2, maxColourDiff / 2);
@@ -361,11 +360,10 @@ function nubenstein() {
                                 }
                             }
                         }
-
-                        wallTextures.push(new THREE.DataTexture(wallData, texSize, texSize, THREE.RGBAFormat, THREE.UnsignedByteType, THREE.UVMapping));
-                        wallTextures[wallTextures.length - 1].needsUpdate = true;
                     }
-                    return wallTextures;
+                    wallTexture = new THREE.DataTexture(wallData, texSize, texSize*game.levelLegend.solidWall.variants, THREE.RGBAFormat, THREE.UnsignedByteType, THREE.UVMapping);
+                    wallTexture.needsUpdate = true;
+                    return wallTexture;
                 }
 
                 return {
@@ -375,12 +373,13 @@ function nubenstein() {
             const textures = createTextures();
 
             (function texTest() {
-                let geometry = new THREE.PlaneGeometry(1, 1);
-                let mat = new THREE.MeshBasicMaterial({ map: textures.walls[0], side: THREE.DoubleSide, transparent: true });
+                let geometry = new THREE.PlaneBufferGeometry(1, 16);
+                let mat = new THREE.MeshBasicMaterial({ map: textures.walls, side: THREE.DoubleSide, transparent: true });
                 mat.needsUpdate = true;
                 var mesh = new THREE.Mesh(geometry, mat);
                 mesh.name = "texTest";
                 game.scene.add(mesh);
+                console.log(geometry);
 
                 let textSprite = createTextSprite("hello? is it me you're looking for?");
 
@@ -406,12 +405,20 @@ function nubenstein() {
                     }
                 })();
 
+                // some graphical consts
+                const wallCellSize = 1.0;
+
                 // TODO: run through map grid, push back geometry into each corresponding type, then make meshes outta each with each corresponding texture/mat
                 for (let x = 0; x < game.levelWidth; x++) {
                     for (let y = 0; y < game.levelHeight; y++) {
                         // for every block in this level grid, let's see how we can shove this into a mesh
                         switch (newLevelGrid[x + game.levelWidth * y].icon) {
-                            
+                            case game.levelLegend.solidWall:
+                                (function pushWallGeometry() {
+                                    let tempWall = new THREE.PlaneBufferGeometry(wallCellSize, wallCellSize);
+                                    
+                                })();
+                                break;
                             default:
                                 break;
                         }
@@ -679,6 +686,8 @@ function nubenstein() {
 
                 if (game.input.isKeyHeld("i")) {
                     console.log(self.camera.rotation.x);
+                    console.log(self.camera.position);
+                    console.log(self.camera.roataion);
                     console.log(typeof self.camera);
                 }
 
