@@ -1,12 +1,12 @@
 (function () {
+    if (typeof THREE != "undefined") {
+        return;
+    }
+
     let threejsElement = document.createElement("script");
     threejsElement.type = "text/javascript";
     threejsElement.src = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r82/three.js";
     document.head.appendChild(threejsElement);
-
-    if(window.location.protocol === "file:") {
-        document.title = "Local Nubenstein";
-    }
 })();
 
 function nubenstein() {
@@ -25,10 +25,10 @@ function nubenstein() {
         game.height = (nubElement.getAttribute("height") ? nubElement.getAttribute("height") : 600);
         game.renderer = new THREE.WebGLRenderer();
         game.scene = new THREE.Scene(), // camera within this scene is handled by Player class
-        game.sceneHUD = new THREE.Scene(), // ortho camera within this is gonna be handled by HUD class
-        game.states = {
-            inGame: false
-        };
+            game.sceneHUD = new THREE.Scene(), // ortho camera within this is gonna be handled by HUD class
+            game.states = {
+                inGame: false
+            };
         game.totalScore = 0;
         game.levelScore = 0;
         game.levelNumber = -1;
@@ -47,14 +47,14 @@ function nubenstein() {
             openPickup: new LevelLegendElementCreator("p", 16)
         };
         game.levelWidth = 32, // don't try and write to this you nincompoop
-        game.levelHeight = 32, // don't write to this either you lobster
-        game.levelGrid = [];
+            game.levelHeight = 32, // don't write to this either you lobster
+            game.levelGrid = [];
+        game.transformer = new Transformer(); // "static" helper
         game.prng = new PRNG((nubElement.getAttribute("seed") ? nubElement.getAttribute("seed") : Math.random() * (10000 - 1) + 1));
         game.input = new Input();
         game.player = new Player();
-        game.transformer = new Transformer(); // "static" helper
     }
-    
+
     // Main looping functions, logic and listener functions
     (function setup() {
         (function setupRenderer() {
@@ -283,7 +283,7 @@ function nubenstein() {
         printGrid("icon");
         printGrid("variant");
 
-        (function createScene() {
+        (function createLevelScene() {
             // ooh, actual "3d" stuff
             (function clearScene() {
                 for (let i = game.scene.children.length - 1; i >= 0; i--) {
@@ -317,53 +317,53 @@ function nubenstein() {
                     const brickHeight = 4;
                     const fillerSize = 1;
                     const fillerColour = new ColourRGBA(16, 16, 16, 255);
-                    
+
                     const wallTextures = [];
 
-                    for(let variant = 0; variant < game.levelLegend.solidWall.variants; variant++) {
+                    for (let variant = 0; variant < game.levelLegend.solidWall.variants; variant++) {
                         let wallData = new Uint8Array(texSize * texSize * 4); // 4 for rgba components
-                        
+
                         const bricks = [];
 
                         let startMidway = false;
-                        for(let brickY = 0; brickY < texSize; brickY+=(brickHeight+fillerSize)) {
-                            for(let brickX = 0; brickX < texSize; brickX+=(brickWidth+fillerSize)) {
+                        for (let brickY = 0; brickY < texSize; brickY += (brickHeight + fillerSize)) {
+                            for (let brickX = 0; brickX < texSize; brickX += (brickWidth + fillerSize)) {
                                 bricks.push(new Box(
-                                    (brickX === 0 ? brickX : (startMidway ? brickX - Math.floor((brickWidth+fillerSize)/2) : brickX)),
+                                    (brickX === 0 ? brickX : (startMidway ? brickX - Math.floor((brickWidth + fillerSize) / 2) : brickX)),
                                     brickY,
-                                    (startMidway ? (brickX === 0 ? Math.floor(brickWidth / 2) : (brickX+brickWidth+fillerSize < texSize ? brickWidth : (texSize-brickX)+Math.ceil((brickWidth+fillerSize)/2))) : (brickX+brickWidth+fillerSize < texSize ? brickWidth : texSize-(brickX+fillerSize))),
+                                    (startMidway ? (brickX === 0 ? Math.floor(brickWidth / 2) : (brickX + brickWidth + fillerSize < texSize ? brickWidth : (texSize - brickX) + Math.ceil((brickWidth + fillerSize) / 2))) : (brickX + brickWidth + fillerSize < texSize ? brickWidth : texSize - (brickX + fillerSize))),
                                     brickHeight
                                 ));
 
-                                bricks[bricks.length-1].colour = new ColourRGBA(game.prng.nextInRangeRound(colourTheme.r-maxColourDiff, colourTheme.r+maxColourDiff), game.prng.nextInRangeRound(colourTheme.g-maxColourDiff, colourTheme.g+maxColourDiff), game.prng.nextInRangeRound(colourTheme.b-maxColourDiff, colourTheme.b-maxColourDiff), colourTheme.a);
+                                bricks[bricks.length - 1].colour = new ColourRGBA(game.prng.nextInRangeRound(colourTheme.r - maxColourDiff, colourTheme.r + maxColourDiff), game.prng.nextInRangeRound(colourTheme.g - maxColourDiff, colourTheme.g + maxColourDiff), game.prng.nextInRangeRound(colourTheme.b - maxColourDiff, colourTheme.b - maxColourDiff), colourTheme.a);
                             }
                             startMidway = !startMidway;
                         }
 
-                        for(brick of bricks) {
-                            for(let x = brick.x; x < brick.x+brick.w; x++) {
-                                for(let y = brick.y; y < brick.y+brick.h; y++) {
-                                    wallData[4 * (x + texSize * y) + 0] = brick.colour.r + game.prng.nextInRangeFloor(-maxColourDiff/2, maxColourDiff/2);
-                                    wallData[4 * (x + texSize * y) + 1] = brick.colour.g + game.prng.nextInRangeFloor(-maxColourDiff/2, maxColourDiff/2);
-                                    wallData[4 * (x + texSize * y) + 2] = brick.colour.b + game.prng.nextInRangeFloor(-maxColourDiff/2, maxColourDiff/2);
+                        for (brick of bricks) {
+                            for (let x = brick.x; x < brick.x + brick.w; x++) {
+                                for (let y = brick.y; y < brick.y + brick.h; y++) {
+                                    wallData[4 * (x + texSize * y) + 0] = brick.colour.r + game.prng.nextInRangeFloor(-maxColourDiff / 2, maxColourDiff / 2);
+                                    wallData[4 * (x + texSize * y) + 1] = brick.colour.g + game.prng.nextInRangeFloor(-maxColourDiff / 2, maxColourDiff / 2);
+                                    wallData[4 * (x + texSize * y) + 2] = brick.colour.b + game.prng.nextInRangeFloor(-maxColourDiff / 2, maxColourDiff / 2);
                                     wallData[4 * (x + texSize * y) + 3] = brick.colour.a;
                                 }
                             }
                         }
 
-                        for(let x = 0; x < texSize; x++) {
-                            for(let y = 0; y < texSize; y++) {
-                                if(!wallData[4 * (x + texSize * y) + 0] || !wallData[4 * (x + texSize * y) + 1] || !wallData[4 * (x + texSize * y) + 2] || !wallData[4 * (x + texSize * y) + 3]) {
-                                    wallData[4 * (x + texSize * y) + 0] = fillerColour.r + game.prng.nextInRangeFloor(-maxColourDiff/2, maxColourDiff/2);
-                                    wallData[4 * (x + texSize * y) + 1] = fillerColour.g + game.prng.nextInRangeFloor(-maxColourDiff/2, maxColourDiff/2);
-                                    wallData[4 * (x + texSize * y) + 2] = fillerColour.b + game.prng.nextInRangeFloor(-maxColourDiff/2, maxColourDiff/2);
+                        for (let x = 0; x < texSize; x++) {
+                            for (let y = 0; y < texSize; y++) {
+                                if (!wallData[4 * (x + texSize * y) + 0] || !wallData[4 * (x + texSize * y) + 1] || !wallData[4 * (x + texSize * y) + 2] || !wallData[4 * (x + texSize * y) + 3]) {
+                                    wallData[4 * (x + texSize * y) + 0] = fillerColour.r + game.prng.nextInRangeFloor(-maxColourDiff / 2, maxColourDiff / 2);
+                                    wallData[4 * (x + texSize * y) + 1] = fillerColour.g + game.prng.nextInRangeFloor(-maxColourDiff / 2, maxColourDiff / 2);
+                                    wallData[4 * (x + texSize * y) + 2] = fillerColour.b + game.prng.nextInRangeFloor(-maxColourDiff / 2, maxColourDiff / 2);
                                     wallData[4 * (x + texSize * y) + 3] = fillerColour.a;
                                 }
                             }
                         }
 
                         wallTextures.push(new THREE.DataTexture(wallData, texSize, texSize, THREE.RGBAFormat, THREE.UnsignedByteType, THREE.UVMapping));
-                        wallTextures[wallTextures.length-1].needsUpdate = true;
+                        wallTextures[wallTextures.length - 1].needsUpdate = true;
                     }
                     return wallTextures;
                 }
@@ -382,60 +382,80 @@ function nubenstein() {
                 mesh.name = "texTest";
                 game.scene.add(mesh);
 
+                let textSprite = createTextSprite("hello? is it me you're looking for?");
+
+                game.scene.add(textSprite);
+
             })();
 
-            (function createWallGeometry() {
+            (function createLevelGeometry() {
                 // custom vbos here we go buddy https://threejs.org/docs/#Reference/Core/BufferGeometry
                 // so doors (which have moving geometry) will not be part of this whole thing
                 // https://scottbyrns.atlassian.net/wiki/display/THREEJS/Working+with+BufferGeometry
-                const levelGeometry = new THREE.BufferGeometry();
+                // although it doesnt make the map draw calls into just 1 buffer, it should help a bit.
+                const levelGeometries = {}; // put similar blocks (which have the same texture/material) into one corresponding buffergeometry
 
-                const levelPositions = new Float32Array([]);
-                const levelNormals = new Float32Array([]);
-                const levelUVs = new Float32Array([]);
-                const levelIndices = new Float32Array([]);
+                (function setupGeometries() {
+                    // just allocate a bunch of new threejs buffergeometries. don't matter if that legend element isn't even supposed to have a solid representation, we'll clear out the empty ones'
+                    // TODO: ignore empty buffergeometries, dont make useless meshes out of them and dont add them to the scene
+                    for (let levelLegendString in game.levelLegend) {
+                        levelGeometries[levelLegendString] = []; // an array, a geometry for each variant
+                        for (let variant = 0; variant < game.levelLegend[levelLegendString].variants; variant++) {
+                            levelGeometries[levelLegendString].push(new THREE.BufferGeometry());
+                        }
+                    }
+                })();
+
+                // TODO: run through map grid, push back geometry into each corresponding type, then make meshes outta each with each corresponding texture/mat
                 for (let x = 0; x < game.levelWidth; x++) {
                     for (let y = 0; y < game.levelHeight; y++) {
-                        if (newLevelGrid[x + game.levelWidth * y].icon === game.levelLegend.solidWall.icon) {
-                            // can't really just use "if this block is === open middle and open hallway, cause the open spawnpint and other stuff will conflict
-                            if (x !== game.levelWidth - 1 && (newLevelGrid[(x + 1) + game.levelWidth * y].icon !== game.levelLegend.solidWall.icon || newLevelGrid[(x + 1) + game.levelWidth * y].icon !== game.levelLegend.solidWall.icon)) {
-
-                            }
+                        // for every block in this level grid, let's see how we can shove this into a mesh
+                        switch (newLevelGrid[x + game.levelWidth * y].icon) {
+                            
+                            default:
+                                break;
                         }
                     }
                 }
+
             })();
 
-            // TODO: remember to give your eventual mesh a name!
+            // TODO: remember to give your eventual meshes a name!
 
         })();
 
         game.levelGrid = newLevelGrid.slice();
     }
 
-    function createTextSprite(message, fontsize, colour /*pass in an object with an r,g,b,a component*/, font) {
-        let ctx;
-        let texture;
-        let sprite;
-        let spriteMat;
-        let canvas = document.createElement("canvas");
+    function createTextSprite(message, parameters) {
+        if (parameters === undefined) parameters = {};
+        let fontface = parameters.hasOwnProperty("fontface") ? parameters["fontface"] : "Arial";
+        let fontsize = parameters.hasOwnProperty("fontsize") ? parameters["fontsize"] : 18;
+        let borderThickness = parameters.hasOwnProperty("borderThickness") ? parameters["borderThickness"] : 4;
+        let borderColor = parameters.hasOwnProperty("borderColor") ? parameters["borderColor"] : { r: 0, g: 0, b: 0, a: 1.0 };
+        let backgroundColor = parameters.hasOwnProperty("backgroundColor") ? parameters["backgroundColor"] : { r: 255, g: 255, b: 255, a: 1.0 };
+        let textColor = parameters.hasOwnProperty("textColor") ? parameters["textColor"] : { r: 0, g: 0, b: 0, a: 1.0 };
 
-        ctx = canvas.getContext("2d");
-        ctx.font = fontsize + "px " + (font ? font : "Courier");
+        let canvas = document.createElement('canvas');
+        let context = canvas.getContext('2d');
+        context.font = fontsize + "px " + fontface;
+        let metrics = context.measureText(message);
+        let textWidth = metrics.width;
 
-        canvas.width = ctx.measureText(message).width;
-        canvas.height = fontsize * 2; // can be any multiplier, 2 seems reasonable
+        context.fillStyle = "rgba(" + backgroundColor.r + "," + backgroundColor.g + "," + backgroundColor.b + "," + backgroundColor.a + ")";
+        context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + "," + borderColor.b + "," + borderColor.a + ")";
 
-        ctx.font = fontsize + "px " + (font ? font : "Courier"); // not very DRY :(
-        ctx.fillStyle = "rgba(" + colour.r + "," + colour.g + "," + colour.b + "," + colour.a + ")";
-        ctx.fillText(message, 0, fontsize);
+        context.lineWidth = borderThickness;
 
-        texture = new THREE.Texture(canvas);
-        texture.minFilter = THREE.LinearFilter;
+        context.fillStyle = "rgba(" + textColor.r + ", " + textColor.g + ", " + textColor.b + ", 1.0)";
+        context.fillText(message, borderThickness, fontsize + borderThickness);
+
+        let texture = new THREE.Texture(canvas, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.NearestFilter, THREE.NearestFilter);
         texture.needsUpdate = true;
 
-        spriteMat = new THREE.SpriteMaterial({ map: texture });
-        sprite = new THREE.Sprite(spriteMat);
+        let spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+        let sprite = new THREE.Sprite(spriteMaterial);
+        //sprite.scale.set(0.5 * fontsize, 0.25 * fontsize, 0.75 * fontsize);
         return sprite;
     }
 
@@ -502,7 +522,7 @@ function nubenstein() {
             lastFrame: 0,
             total: 0
         };
-        
+
         (function initInput() {
             const element = game.renderer.domElement;
 
@@ -510,11 +530,11 @@ function nubenstein() {
             element.setAttribute("tabindex", "0");
             element.focus();
 
-            element.addEventListener("mousedown", function(event) {
+            element.addEventListener("mousedown", function (event) {
                 buttonsHeld[event.button] = true;
             });
 
-            element.addEventListener("mouseup", function(event) {
+            element.addEventListener("mouseup", function (event) {
                 buttonsHeld[event.button] = false;
             });
 
@@ -533,7 +553,7 @@ function nubenstein() {
                 element.addEventListener("mousemove", mousemoveCallback);
             });
 
-            element.addEventListener("blur", function(event) {
+            element.addEventListener("blur", function (event) {
                 document.exitPointerLock = document.exitPointerLock || document.mozExitPointerLock;
                 document.exitPointerLock();
 
@@ -550,7 +570,7 @@ function nubenstein() {
                         document.mozPointerLockElement === element ||
                         document.webkitPointerLockElement === element) {
                         pointerLocked = true;
-                    } 
+                    }
                     else {
                         pointerLocked = false;
                     }
@@ -563,31 +583,31 @@ function nubenstein() {
             }
         })();
 
-        this.isButtonHeld = function(key) {
+        this.isButtonHeld = function (key) {
             return buttonsHeld[key];
         };
 
-        this.isKeyHeld = function(key) {
+        this.isKeyHeld = function (key) {
             return keysHeld[key];
         };
 
-        this.mouseMoved = function() {
+        this.mouseMoved = function () {
             return mouseMove;
         };
 
-        this.isPointerLocked = function() {
+        this.isPointerLocked = function () {
             return pointerLocked;
         };
 
-        this.getTimeDelta = function() {
+        this.getTimeDelta = function () {
             return time.delta;
         };
 
-        this.getTimeTotal = function() {
+        this.getTimeTotal = function () {
             return time.total;
         };
 
-        this.tick = function() {
+        this.tick = function () {
             time.total = time.date.getTime();
             time.delta = time.total - time.lastFrame;
             time.lastFrame = time.total;
@@ -601,15 +621,15 @@ function nubenstein() {
         // helper class. i could use a const Transformer = ()(); for a "static" class, but heck, i dont want to put this definition at the front of the file
         const self = this;
 
-        self.translateAddWorld = function(obj, vec) {
-            if(typeof obj !== "object") {
+        self.translateAddWorld = function (obj, vec) {
+            if (typeof obj !== "object") {
                 return;
             }
             // TODO: doohickeys
         }
 
-        self.rotateAddWorld = function(obj, axis /*three vector3*/, rads /*very rad*/) {
-            if(typeof obj !== "object") {
+        self.rotateAddWorld = function (obj, axis /*three vector3*/, rads /*very rad*/) {
+            if (typeof obj !== "object") {
                 return;
             }
             let rotMatWorld = new THREE.Matrix4();
@@ -630,47 +650,47 @@ function nubenstein() {
 
         self.camera.position.z = 1;
 
-        self.setFov = function(newFov) {
+        self.setFov = function (newFov) {
             game.player.fov = (typeof newFov === "number" ? newFov : game.player.fov);
             game.player.camera.fov = game.player.fov;
             game.player.camera.updateProjectionMatrix();
             return newFov;
         }
 
-        self.tick = function() {
+        self.tick = function () {
             (function doMovement() {
-                if(!game.input.isPointerLocked()) {
+                if (!game.input.isPointerLocked()) {
                     return;
                 }
 
                 // TODO: use transformer class to handle translation collisions with the levelGrid
-                if(game.input.isKeyHeld(game.input.config.walkForward)) {
+                if (game.input.isKeyHeld(game.input.config.walkForward)) {
                     self.camera.translateZ(-0.1);
                 }
-                if(game.input.isKeyHeld(game.input.config.walkBackward)) {
+                if (game.input.isKeyHeld(game.input.config.walkBackward)) {
                     self.camera.translateZ(0.1);
                 }
-                if(game.input.isKeyHeld(game.input.config.walkLeft)) {
-                    self.camera.translateX(-0.1);                    
+                if (game.input.isKeyHeld(game.input.config.walkLeft)) {
+                    self.camera.translateX(-0.1);
                 }
-                if(game.input.isKeyHeld(game.input.config.walkRight)) {
-                    self.camera.translateX(0.1);                   
+                if (game.input.isKeyHeld(game.input.config.walkRight)) {
+                    self.camera.translateX(0.1);
                 }
 
-                if(game.input.isKeyHeld("i")) {
+                if (game.input.isKeyHeld("i")) {
                     console.log(self.camera.rotation.x);
                     console.log(typeof self.camera);
                 }
 
                 // yaw
                 game.transformer.rotateAddWorld(self.camera, new THREE.Vector3(0.0, 1.0, 0.0), -game.input.mouseMoved().x * game.input.config.lookSensitivity);
-                
+
                 // pitch (shouldnt be in actual game)
                 self.camera.rotateX(-game.input.mouseMoved().y * game.input.config.lookSensitivity);
             })();
         };
     }
-    
+
     (function render() {
         requestAnimationFrame(render);
 
@@ -679,7 +699,7 @@ function nubenstein() {
         // TODO: just a test
         game.scene.getObjectByName("texTest").rotation.y += 0.01;
 
-        game.input.tick();
+        game.input.tick(); // This clears the mouse moved state to 0, so it has to be done once all other objects have queried its stuff
 
         game.renderer.render(game.scene, game.player.camera);
     })();
