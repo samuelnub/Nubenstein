@@ -42,3 +42,9 @@ sad, but kinda unavoidable
 25 Nov 2016
 transformer helper class, will contain checks for collisions in the future
 http://stackoverflow.com/questions/11119753/how-to-rotate-a-object-on-axis-world-three-js
+
+1 Dec 2016
+ey doe, sorry me for not doing heck for like 5 days
+texture variants are now shoved into 1 texture, allowing the geometry and subsequently the
+meshees of the level to be significantly reduced as I can now use UV mapping
+variants are arranged vertically, so much easier than horizontally.

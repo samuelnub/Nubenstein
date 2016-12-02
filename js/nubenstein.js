@@ -312,16 +312,15 @@ function nubenstein() {
                 const colourTheme = new ColourRGBA(game.prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 4), game.prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 4), game.prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 4), 255);
 
                 function createWallTextures() {
-                    // will return an array containing already-complete threejs textures
-                    const brickWidth = game.prng.nextInRangeRound(3, 8) * 2 - 1;
-                    const brickHeight = 4;
-                    const fillerSize = 1;
-                    const fillerColour = new ColourRGBA(16, 16, 16, 255);
-
                     let wallTexture;
                     let wallData = new Uint8Array(texSize * texSize * 4 * game.levelLegend.solidWall.variants); // 4 for rgba components
 
                     for (let variant = 0; variant < game.levelLegend.solidWall.variants * texSize; variant+=texSize) {
+                        const brickWidth = game.prng.nextInRangeRound(3, 8) * 2 - 1;
+                        const brickHeight = 4;
+                        const fillerSize = 1;
+                        const fillerColour = new ColourRGBA(clamp(colourTheme.r-maxColourDiff*4,maxColourDiff*2,255), clamp(colourTheme.g-maxColourDiff*4,maxColourDiff*2,255), clamp(colourTheme.b-maxColourDiff*4,maxColourDiff*2,255), 255);
+
                         const bricks = [];
 
                         let startMidway = false;
@@ -366,6 +365,9 @@ function nubenstein() {
                     return wallTexture;
                 }
 
+                // Textures are as follows:
+                // one texture per block type, and each block type will likely have variants. textures are stacked downward
+                // So for UV coords, divide the y component (1.0) by the variants and multiply by that level cell's variant
                 return {
                     walls: createWallTextures()
                 };
@@ -374,6 +376,9 @@ function nubenstein() {
 
             (function texTest() {
                 let geometry = new THREE.PlaneBufferGeometry(1, 16);
+                let geometry2 = new THREE.PlaneBufferGeometry(16, 1);
+                geometry.merge(geometry2);
+
                 let mat = new THREE.MeshBasicMaterial({ map: textures.walls, side: THREE.DoubleSide, transparent: true });
                 mat.needsUpdate = true;
                 var mesh = new THREE.Mesh(geometry, mat);
@@ -391,32 +396,57 @@ function nubenstein() {
                 // custom vbos here we go buddy https://threejs.org/docs/#Reference/Core/BufferGeometry
                 // so doors (which have moving geometry) will not be part of this whole thing
                 // https://scottbyrns.atlassian.net/wiki/display/THREEJS/Working+with+BufferGeometry
-                // although it doesnt make the map draw calls into just 1 buffer, it should help a bit.
-                const levelGeometries = {}; // put similar blocks (which have the same texture/material) into one corresponding buffergeometry
+                const levelGeometry = new THREE.BufferGeometry();
 
-                (function setupGeometries() {
-                    // just allocate a bunch of new threejs buffergeometries. don't matter if that legend element isn't even supposed to have a solid representation, we'll clear out the empty ones'
-                    // TODO: ignore empty buffergeometries, dont make useless meshes out of them and dont add them to the scene
-                    for (let levelLegendString in game.levelLegend) {
-                        levelGeometries[levelLegendString] = []; // an array, a geometry for each variant
-                        for (let variant = 0; variant < game.levelLegend[levelLegendString].variants; variant++) {
-                            levelGeometries[levelLegendString].push(new THREE.BufferGeometry());
-                        }
-                    }
-                })();
-
-                // some graphical consts
+                const posAttribSize = 3;
+                const normAttribSize = 3;
+                const uvAttribSize = 2;
                 const wallCellSize = 1.0;
+
+                // each cell can has 4 possible sides (ooh, a pillar block technically)
+                let positions = [];
+                let normals = []; // TODO, be lazy and call computeVertexNormals()
+                let uvs = [];
+                let indices = [];
 
                 // TODO: run through map grid, push back geometry into each corresponding type, then make meshes outta each with each corresponding texture/mat
                 for (let x = 0; x < game.levelWidth; x++) {
                     for (let y = 0; y < game.levelHeight; y++) {
+                        // graphically, treat y as the z axis
                         // for every block in this level grid, let's see how we can shove this into a mesh
                         switch (newLevelGrid[x + game.levelWidth * y].icon) {
                             case game.levelLegend.solidWall:
                                 (function pushWallGeometry() {
-                                    let tempWall = new THREE.PlaneBufferGeometry(wallCellSize, wallCellSize);
-                                    
+                                    // check each side, north/south/west/east if its open middle
+
+                                    if(newLevelGrid[(x+1) + game.levelWidth * y].icon !== game.levelLegend.solidMiddle) {
+                                        positions = positions.concat([
+                                            0+x, wallCellSize, 0+y,
+                                            0+x, wallCellSize, wallCellSize+y,
+                                            0+x, 0, 0+y,
+                                            0+x, 0, wallCellSize+y
+                                        ]);
+                                        concatUVsIndices();
+                                    }
+
+                                    function concatUVsIndices() {
+                                        // should be called after you concatenate your positions
+                                        uvs = uvs.concat([
+                                            0, (1 / game.levelLegend.solidWall.variants) * newLevelGrid[x + game.levelWidth * y].variant,
+                                            0, (1 / (game.levelLegend.solidWall.variants) * newLevelGrid[x + game.levelWidth * y].variant+1),
+                                            1, (1 / game.levelLegend.solidWall.variants) * newLevelGrid[x + game.levelWidth * y].variant,
+                                            1, (1 / (game.levelLegend.solidWall.variants) * newLevelGrid[x + game.levelWidth * y].variant+1)
+                                        ]);
+                                        const indexOffset = positions.length-4; // 4 vertices
+                                        indices.concat([
+                                            indexOffset+0,
+                                            indexOffset+2,
+                                            indexOffset+1,
+                                            indexOffset+2,
+                                            indexOffset+3,
+                                            indexOffset+1
+                                        ]);
+                                    }
                                 })();
                                 break;
                             default:
@@ -424,6 +454,19 @@ function nubenstein() {
                         }
                     }
                 }
+
+                levelGeometry.addAttribute("psoition", new THREE.BufferAttribute(new Float32Array(positions), posAttribSize));
+                levelGeometry.addAttribute("normal", new THREE.BufferAttribute(new Float32Array(normals), normAttribSize));
+                levelGeometry.addAttribute("uv", new THREE.BufferAttribute(new Float32Array(uvs), uvAttribSize));
+                levelGeometry.addAttribute("index", new THREE.BufferAttribute(new Uint16Array(indices), 1)); //TODO setindex() instead
+
+                levelGeometry.computeVertexNormals();
+
+                let mat = new THREE.MeshBasicMaterial({ map: textures.walls, side: THREE.DoubleSide, transparent: true });
+                mat.needsUpdate = true;
+                var mesh = new THREE.Mesh(levelGeometry, mat);
+                game.scene.add(mesh);
+                console.log(mesh);
 
             })();
 
