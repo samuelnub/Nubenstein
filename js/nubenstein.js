@@ -416,7 +416,21 @@ function nubenstein() {
                             case game.levelLegend.solidWall.icon:
                                 (function pushWallGeometry() {
                                     // check each side, north/south/west/east if its open middle
-                                    // TOOD: dunno why i put -x as first
+                                    if(x !== game.levelWidth-1 && newLevelGrid[(x+1) + game.levelWidth * y].icon !== game.levelLegend.solidMiddle.icon) {
+                                        positions = positions.concat([
+                                            0+x+wallCellSize, wallCellSize, 0+y,
+                                            0+x+wallCellSize, wallCellSize, wallCellSize+y,
+                                            0+x+wallCellSize, 0, 0+y,
+                                            0+x+wallCellSize, 0, wallCellSize+y
+                                        ]);
+                                        normals = normals.concat([
+                                            1, 0, 0,
+                                            1, 0, 0,
+                                            1, 0, 0,
+                                            1, 0, 0
+                                        ]);
+                                        concatUVsIndices();
+                                    }
                                     if(x !== 0 && newLevelGrid[(x-1) + game.levelWidth * y].icon !== game.levelLegend.solidMiddle.icon) {
                                         positions = positions.concat([
                                             0+x, wallCellSize, 0+y,
@@ -432,13 +446,43 @@ function nubenstein() {
                                         ]);
                                         concatUVsIndices();
                                     }
+                                    if(y !== game.levelHeight-1 && newLevelGrid[x + game.levelWidth * (y+1)].icon !== game.levelLegend.solidMiddle.icon) {
+                                        positions = positions.concat([
+                                            wallCellSize+x, wallCellSize, 0+y+wallCellSize,
+                                            0+x, wallCellSize, 0+y+wallCellSize,
+                                            wallCellSize+x, 0, 0+y+wallCellSize,
+                                            0+x, 0, 0+y+wallCellSize
+                                        ]);
+                                        normals = normals.concat([
+                                            0, 0, 1,
+                                            0, 0, 1,
+                                            0, 0, 1,
+                                            0, 0, 1
+                                        ]);
+                                        concatUVsIndices();
+                                    }
+                                    if(y !== 0 && newLevelGrid[x + game.levelWidth * (y-1)].icon !== game.levelLegend.solidMiddle.icon) {
+                                        positions = positions.concat([
+                                            wallCellSize+x, wallCellSize, 0+y,
+                                            0+x, wallCellSize, 0+y,
+                                            wallCellSize+x, 0, 0+y,
+                                            0+x, 0, 0+y
+                                        ]);
+                                        normals = normals.concat([
+                                            0, 0, -1,
+                                            0, 0, -1,
+                                            0, 0, -1,
+                                            0, 0, -1
+                                        ]);
+                                        concatUVsIndices();
+                                    }
 
                                     function concatUVsIndices() {
                                         // should be called after you concatenate your positions
                                         uvs = uvs.concat([
                                             0, (1 / game.levelLegend.solidWall.variants) * newLevelGrid[x + game.levelWidth * y].variant,
-                                            0, (1 / (game.levelLegend.solidWall.variants) * (newLevelGrid[x + game.levelWidth * y].variant+1)),
                                             1, (1 / game.levelLegend.solidWall.variants) * newLevelGrid[x + game.levelWidth * y].variant,
+                                            0, (1 / (game.levelLegend.solidWall.variants) * (newLevelGrid[x + game.levelWidth * y].variant+1)),
                                             1, (1 / (game.levelLegend.solidWall.variants) * (newLevelGrid[x + game.levelWidth * y].variant+1))
                                         ]);
                                         const indexOffset = (positions.length/posAttribSize)-4; // 4 vertices

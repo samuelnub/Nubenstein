@@ -48,3 +48,11 @@ ey doe, sorry me for not doing heck for like 5 days
 texture variants are now shoved into 1 texture, allowing the geometry and subsequently the
 meshees of the level to be significantly reduced as I can now use UV mapping
 variants are arranged vertically, so much easier than horizontally.
+
+2 Dec 2016
+work on buffergeometry
+
+3 Dec 2016
+buffergeometry works! i forgot that you had to pass in a BufferAttribute to .setIndex,
+instead of being a cucking idiot and just giving it the array
+i blame dynamic type inference
