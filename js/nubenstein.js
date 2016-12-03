@@ -376,8 +376,6 @@ function nubenstein() {
 
             (function texTest() {
                 let geometry = new THREE.PlaneBufferGeometry(1, 16);
-                let geometry2 = new THREE.PlaneBufferGeometry(16, 1);
-                geometry.merge(geometry2);
 
                 let mat = new THREE.MeshBasicMaterial({ map: textures.walls, side: THREE.DoubleSide, transparent: true });
                 mat.needsUpdate = true;
@@ -405,7 +403,7 @@ function nubenstein() {
 
                 // each cell can has 4 possible sides (ooh, a pillar block technically)
                 let positions = [];
-                let normals = []; // TODO, be lazy and call computeVertexNormals()
+                let normals = [];
                 let uvs = [];
                 let indices = [];
 
@@ -415,16 +413,22 @@ function nubenstein() {
                         // graphically, treat y as the z axis
                         // for every block in this level grid, let's see how we can shove this into a mesh
                         switch (newLevelGrid[x + game.levelWidth * y].icon) {
-                            case game.levelLegend.solidWall:
+                            case game.levelLegend.solidWall.icon:
                                 (function pushWallGeometry() {
                                     // check each side, north/south/west/east if its open middle
-
-                                    if(newLevelGrid[(x+1) + game.levelWidth * y].icon !== game.levelLegend.solidMiddle) {
+                                    // TOOD: dunno why i put -x as first
+                                    if(x !== 0 && newLevelGrid[(x-1) + game.levelWidth * y].icon !== game.levelLegend.solidMiddle.icon) {
                                         positions = positions.concat([
                                             0+x, wallCellSize, 0+y,
                                             0+x, wallCellSize, wallCellSize+y,
                                             0+x, 0, 0+y,
                                             0+x, 0, wallCellSize+y
+                                        ]);
+                                        normals = normals.concat([
+                                            -1, 0, 0,
+                                            -1, 0, 0,
+                                            -1, 0, 0,
+                                            -1, 0, 0
                                         ]);
                                         concatUVsIndices();
                                     }
@@ -433,12 +437,12 @@ function nubenstein() {
                                         // should be called after you concatenate your positions
                                         uvs = uvs.concat([
                                             0, (1 / game.levelLegend.solidWall.variants) * newLevelGrid[x + game.levelWidth * y].variant,
-                                            0, (1 / (game.levelLegend.solidWall.variants) * newLevelGrid[x + game.levelWidth * y].variant+1),
+                                            0, (1 / (game.levelLegend.solidWall.variants) * (newLevelGrid[x + game.levelWidth * y].variant+1)),
                                             1, (1 / game.levelLegend.solidWall.variants) * newLevelGrid[x + game.levelWidth * y].variant,
-                                            1, (1 / (game.levelLegend.solidWall.variants) * newLevelGrid[x + game.levelWidth * y].variant+1)
+                                            1, (1 / (game.levelLegend.solidWall.variants) * (newLevelGrid[x + game.levelWidth * y].variant+1))
                                         ]);
-                                        const indexOffset = positions.length-4; // 4 vertices
-                                        indices.concat([
+                                        const indexOffset = (positions.length/posAttribSize)-4; // 4 vertices
+                                        indices = indices.concat([
                                             indexOffset+0,
                                             indexOffset+2,
                                             indexOffset+1,
@@ -455,18 +459,26 @@ function nubenstein() {
                     }
                 }
 
-                levelGeometry.addAttribute("psoition", new THREE.BufferAttribute(new Float32Array(positions), posAttribSize));
+                levelGeometry.addAttribute("position", new THREE.BufferAttribute(new Float32Array(positions), posAttribSize));
                 levelGeometry.addAttribute("normal", new THREE.BufferAttribute(new Float32Array(normals), normAttribSize));
                 levelGeometry.addAttribute("uv", new THREE.BufferAttribute(new Float32Array(uvs), uvAttribSize));
-                levelGeometry.addAttribute("index", new THREE.BufferAttribute(new Uint16Array(indices), 1)); //TODO setindex() instead
+                levelGeometry.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
 
-                levelGeometry.computeVertexNormals();
-
+                // dunno if this is needed
+                levelGeometry.offsets = [
+                    {
+                        start: 0,
+                        index: 0,
+                        count: indices.length
+                    }
+                ];
+                
                 let mat = new THREE.MeshBasicMaterial({ map: textures.walls, side: THREE.DoubleSide, transparent: true });
                 mat.needsUpdate = true;
                 var mesh = new THREE.Mesh(levelGeometry, mat);
                 game.scene.add(mesh);
                 console.log(mesh);
+                console.log(game.scene);
 
             })();
 
