@@ -24,11 +24,11 @@ function nubenstein() {
         game.width = (nubElement.getAttribute("width") ? nubElement.getAttribute("width") : 800);
         game.height = (nubElement.getAttribute("height") ? nubElement.getAttribute("height") : 600);
         game.renderer = new THREE.WebGLRenderer();
-        game.scene = new THREE.Scene(), // camera within this scene is handled by Player class
-            game.sceneHUD = new THREE.Scene(), // ortho camera within this is gonna be handled by HUD class
-            game.states = {
-                inGame: false
-            };
+        game.scene = new THREE.Scene(); // camera within this scene is handled by Player class
+        game.sceneHUD = new THREE.Scene(); // ortho camera within this is gonna be handled by HUD class
+        game.states = {
+            inGame: false
+        };
         game.totalScore = 0;
         game.levelScore = 0;
         game.levelNumber = -1;
@@ -46,9 +46,9 @@ function nubenstein() {
             openEnemySpawn: new LevelLegendElementCreator("e", 16),
             openPickup: new LevelLegendElementCreator("p", 16)
         };
-        game.levelWidth = 32, // don't try and write to this you nincompoop
-            game.levelHeight = 32, // don't write to this either you lobster
-            game.levelGrid = [];
+        game.levelWidth = 32; // don't try and write to this you nincompoop
+        game.levelHeight = 32; // don't write to this either you lobster
+        game.levelGrid = [];
         game.transformer = new Transformer(); // "static" helper
         game.prng = new PRNG((nubElement.getAttribute("seed") ? nubElement.getAttribute("seed") : Math.random() * (10000 - 1) + 1));
         game.input = new Input();
@@ -84,204 +84,212 @@ function nubenstein() {
             // this.dirMoved; // refer to below's switch case. relative to last square in list. the first one in the array should be undefined
         }
 
-        (function createRoomsAndHallways() {
-            // Plonk some cavities, see if they overlap, if so, discard, if not, insert it into level
-            const maxRoomCount = game.prng.nextInRangeRound(Math.min(game.levelWidth, game.levelHeight), Math.max(game.levelWidth, game.levelHeight)) * 1.5;
-            const minRoomWH = 2;
-            const maxRoomWH = 6; // exclusive
-            const roomSpreadOutness = game.prng.nextInRangeRound(2, 8);
-            const hallwaySize = 1; // "width" if its from your perspective
+        (function createLevelGrid() {
+            (function createRoomsAndHallways() {
+                // Plonk some cavities, see if they overlap, if so, discard, if not, insert it into level
+                const maxRoomCount = game.prng.nextInRangeRound(Math.min(game.levelWidth, game.levelHeight), Math.max(game.levelWidth, game.levelHeight)) * 1.5;
+                const minRoomWH = 2;
+                const maxRoomWH = 6; // exclusive
+                const roomSpreadOutness = game.prng.nextInRangeRound(2, 8);
+                const hallwaySize = 1; // "width" if its from your perspective
 
-            let levelRooms = [];
-            let levelHallways = [];
+                let levelRooms = [];
+                let levelHallways = [];
 
-            for (let curRoomTry = 0; curRoomTry < maxRoomCount; curRoomTry++) {
-                // These maps are pretty small, so fancy spatial partitioning isn't really needed
-                const roomTry = new Box(game.prng.nextInRangeRound(game.levelWidth / 2 - minRoomWH, game.levelWidth / 2 + minRoomWH), game.prng.nextInRangeRound(game.levelWidth / 2 - minRoomWH, game.levelWidth / 2 + minRoomWH), game.prng.nextInRangeRound(minRoomWH, maxRoomWH), game.prng.nextInRangeRound(minRoomWH, maxRoomWH));
-                if (levelRooms.length === 0) {
-                    levelRooms.push(roomTry);
-                    continue;
-                }
+                for (let curRoomTry = 0; curRoomTry < maxRoomCount; curRoomTry++) {
+                    // These maps are pretty small, so fancy spatial partitioning isn't really needed
+                    const roomTry = new Box(game.prng.nextInRangeRound(game.levelWidth / 2 - minRoomWH, game.levelWidth / 2 + minRoomWH), game.prng.nextInRangeRound(game.levelWidth / 2 - minRoomWH, game.levelWidth / 2 + minRoomWH), game.prng.nextInRangeRound(minRoomWH, maxRoomWH), game.prng.nextInRangeRound(minRoomWH, maxRoomWH));
+                    if (levelRooms.length === 0) {
+                        levelRooms.push(roomTry);
+                        continue;
+                    }
 
-                // shift this cavity to north, south, west, east of the last inserted cavity
-                const lastRoomRef = levelRooms[levelRooms.length - 1];
-                roomTry.x = lastRoomRef.x;
-                roomTry.y = lastRoomRef.y;
-                let directionTry;
-                do {
-                    directionTry = game.prng.nextInRangeFloor(0, 4);
-                }
-                while (directionTry === lastRoomRef.dirMoved);
-                roomTry.dirMoved = directionTry;
+                    // shift this cavity to north, south, west, east of the last inserted cavity
+                    const lastRoomRef = levelRooms[levelRooms.length - 1];
+                    roomTry.x = lastRoomRef.x;
+                    roomTry.y = lastRoomRef.y;
+                    let directionTry;
+                    do {
+                        directionTry = game.prng.nextInRangeFloor(0, 4);
+                    }
+                    while (directionTry === lastRoomRef.dirMoved);
+                    roomTry.dirMoved = directionTry;
 
-                // positive x = >
-                // positive y = V
-                switch (directionTry) {
-                    case 0:
-                        placeNewRoomAndHallway(lastRoomRef, roomTry, "x", "y", true, "w", "h");
-                        break;
-                    case 1:
-                        placeNewRoomAndHallway(lastRoomRef, roomTry, "x", "y", false, "w", "h");
-                        break;
-                    case 2:
-                        placeNewRoomAndHallway(lastRoomRef, roomTry, "y", "x", true, "h", "w");
-                        break;
-                    case 3:
-                        placeNewRoomAndHallway(lastRoomRef, roomTry, "y", "x", false, "h", "w");
-                        break;
-                    default:
-                        console.log("apparently numbers don't work properly in this alternate universe " + directionTry);
-                        break;
-                }
-            }
-
-            function fillGrid(cavities, legendType) {
-                for (cavity of cavities) {
-                    const cavityVariant = game.prng.nextInRangeRound(0, game.levelLegend.openMiddle.variants);
-                    for (let x = 0; x < cavity.w; x++) {
-                        for (let y = 0; y < cavity.h; y++) {
-                            newLevelGrid[(x + cavity.x) + game.levelWidth * (y + cavity.y)] = game.levelLegend[legendType].create(cavityVariant);
-                        }
+                    // positive x = >
+                    // positive y = V
+                    switch (directionTry) {
+                        case 0:
+                            placeNewRoomAndHallway(lastRoomRef, roomTry, "x", "y", true, "w", "h");
+                            break;
+                        case 1:
+                            placeNewRoomAndHallway(lastRoomRef, roomTry, "x", "y", false, "w", "h");
+                            break;
+                        case 2:
+                            placeNewRoomAndHallway(lastRoomRef, roomTry, "y", "x", true, "h", "w");
+                            break;
+                        case 3:
+                            placeNewRoomAndHallway(lastRoomRef, roomTry, "y", "x", false, "h", "w");
+                            break;
+                        default:
+                            console.log("apparently numbers don't work properly in this alternate universe " + directionTry);
+                            break;
                     }
                 }
-            }
-            fillGrid(levelHallways, "openHallway");
-            fillGrid(levelRooms, "openMiddle");
 
-            console.log(levelHallways);
-
-            function placeNewRoomAndHallway(relToRoom, ourRoom, majorAxis /*string, pass it "x" for example*/, minorAxis /*the one to just offset it to give randomness*/, isPlus /*bool*/, majorLength, minorLength /*string of either W or H*/) {
-                let newMajorValue = game.prng.nextInRangeRound(ourRoom[majorLength], ourRoom[majorLength] * roomSpreadOutness + game.prng.nextInRangeRound(0, Math.min(game.levelWidth, game.levelHeight) * game.prng.nextInRange(0, 1)));
-                let newMinorValue = game.prng.nextInRangeRound(Math.ceil(-relToRoom[minorLength] / 4), Math.ceil(relToRoom[minorLength] / 2));
-
-                ourRoom[majorAxis] += (isPlus ? newMajorValue : -newMajorValue);
-                ourRoom[minorAxis] += newMinorValue;
-
-                ourRoom[majorAxis] = clamp(ourRoom[majorAxis], 1, (majorAxis === "x" ? game.levelWidth : game.levelHeight) - ourRoom[majorLength] - 1);
-                ourRoom[minorAxis] = clamp(ourRoom[minorAxis], 1, (minorAxis === "y" ? game.levelHeight : game.levelWidth) - ourRoom[minorLength] - 1);
-
-                // TODO: check if intersects
-                levelRooms.push(ourRoom);
-
-                // place hallway between em too! since we're here lol
-                if (!doRoomsTouch(relToRoom, ourRoom)) {
-                    const ourHallway = new Box();
-
-                    ourHallway[majorAxis] = (!isPlus ? ourRoom[majorAxis] : ourRoom[majorAxis] - Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]));
-                    ourHallway[minorAxis] = ourRoom[minorAxis] + Math.round(newMinorValue * 0.5);
-                    ourHallway[majorLength] = Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]) + 1;
-                    ourHallway[minorLength] = hallwaySize;
-
-                    levelHallways.push(ourHallway);
-                }
-
-                function doRoomsTouch(boxA, boxB) {
-                    return (Math.abs(boxA.x - boxB.x) * 2 <= (boxA.w + boxB.w)) && (Math.abs(boxA.y - boxB.y) * 2 <= (boxA.h + boxB.h));
-                }
-            }
-        })();
-
-        (function createMiddleFiller() {
-            for (let i = 0; i < game.levelWidth * game.levelHeight; i++) {
-                if (!newLevelGrid[i]) {
-                    newLevelGrid[i] = game.levelLegend.solidMiddle.create(0);
-                }
-            }
-        })();
-
-        (function createWalls() {
-            // not all cells may be initialised, so just to keep it safe, i'll use a classic for loop instead of a for of loop
-            // TODO: make it prettier by making each wall have similar variations
-            for (let x = 0; x < game.levelWidth; x++) {
-                let createdWall = game.levelLegend.solidWall.create(game.prng.nextInRangeRound(0, game.levelLegend.solidWall.variants));
-                for (let y = 0; y < game.levelHeight; y++) {
-                    if (x === 0 || y === 0 || x === game.levelWidth - 1 || y === game.levelHeight - 1) {
-                        // sometimes the hallway can poke out of the "boundary", leaking into the void, just seal up the flipping box
-                        newLevelGrid[x + game.levelWidth * y] = createdWall;
-                    }
-                    else if (newLevelGrid[x + game.levelWidth * y].icon === game.levelLegend.openMiddle.icon || newLevelGrid[x + game.levelWidth * y].icon === game.levelLegend.openHallway.icon) {
-                        // for some reason, if i put all those 4 cases into one switch statement, it just won't work properly lol
-                        // TODO: too lazy to make this a bunch of if's instead of this monstrosity
-                        switch (game.levelLegend.solidMiddle.icon) {
-                            case newLevelGrid[(x + 1) + game.levelWidth * y].icon:
-                                newLevelGrid[(x + 1) + game.levelWidth * y] = createdWall;
-                                break;
-                        }
-                        switch (game.levelLegend.solidMiddle.icon) {
-                            case newLevelGrid[(x - 1) + game.levelWidth * y].icon:
-                                newLevelGrid[(x - 1) + game.levelWidth * y] = createdWall;
-                                break;
-                        }
-                        switch (game.levelLegend.solidMiddle.icon) {
-                            case newLevelGrid[x + game.levelWidth * (y + 1)].icon:
-                                newLevelGrid[x + game.levelWidth * (y + 1)] = createdWall;
-                                break;
-                        }
-                        switch (game.levelLegend.solidMiddle.icon) {
-                            case newLevelGrid[x + game.levelWidth * (y - 1)].icon:
-                                newLevelGrid[x + game.levelWidth * (y - 1)] = createdWall;
-                                break;
-                        }
-                    }
-                }
-            }
-        })();
-
-        (function createDoors() {
-            // sees if both the left and right, or above and below blocks are walls, if so, place a door
-            // i don't want too many doors lol, so let's just sample in chunks, like one door per 8x8
-            const chunkSize = 8;
-
-            for (let chunkX = 0; chunkX < game.levelWidth; chunkX += chunkSize) {
-                for (let chunkY = 0; chunkY < game.levelHeight; chunkY += chunkSize) {
-                    for (let x = chunkX; x < chunkX + chunkSize; x++) {
-                        for (let y = chunkY; y < chunkY + chunkSize; y++) {
-                            if (x === 0 || y === 0 || x === game.levelWidth - 1 || y === game.levelHeight - 1) {
-                                break;
-                            }
-                            // if left and right are walls, and top and bottom not a wall, and current is a hallway
-                            if (newLevelGrid[(x + 1) + game.levelWidth * y].icon === game.levelLegend.solidWall.icon && newLevelGrid[(x - 1) + game.levelWidth * y].icon === game.levelLegend.solidWall.icon && newLevelGrid[x + game.levelWidth * (y + 1)].icon !== game.levelLegend.solidWall.icon && newLevelGrid[x + game.levelWidth * (y - 1)].icon !== game.levelLegend.solidWall.icon && newLevelGrid[x + game.levelWidth * y].icon === game.levelLegend.openHallway.icon) {
-                                // even number, so variant total/2 - get random from that range, and multiply by 2
-                                newLevelGrid[x + game.levelWidth * y] = game.levelLegend.solidDoor.create(game.prng.nextInRangeRound(0, game.levelLegend.solidDoor.variants * 0.5) * 2);
-                                x = game.levelWidth; // cheap way to break out of nested loop
-                                y = game.levelHeight;
-                            }
-                            else if (newLevelGrid[x + game.levelWidth * (y + 1)].icon === game.levelLegend.solidWall.icon && newLevelGrid[x + game.levelWidth * (y - 1)].icon === game.levelLegend.solidWall.icon && newLevelGrid[(x + 1) + game.levelWidth * y].icon !== game.levelLegend.solidWall.icon && newLevelGrid[(x - 1) + game.levelWidth * y].icon !== game.levelLegend.solidWall.icon && newLevelGrid[x + game.levelWidth * y].icon === game.levelLegend.openHallway.icon) {
-                                newLevelGrid[x + game.levelWidth * y] = game.levelLegend.solidDoor.create(game.prng.nextInRangeFloor(1, game.levelLegend.solidDoor.variants * 0.5) * 2 - 1);
-                                x = game.levelWidth;
-                                y = game.levelHeight;
+                (function fillOpenMiddlesAndSolidWalls() {
+                    for(room of levelRooms) {
+                        for(let x = room.x; x < room.x + room.w; x++) {
+                            for(let y = room.y; y < room.y + room.h; y++) {
+                                let openMiddleVariant = game.prng.nextInRangeFloor(0, game.levelLegend.openMiddle.variants);
+                                newLevelGrid[x + game.levelWidth * y] = game.levelLegend.openMiddle.create(openMiddleVariant);
                             }
                         }
+
+                        // put walls
+                    }
+                    
+                    // for each hallway, similar to the one above
+
+                    // TODO: wrap the edge with a wall
+                })();
+
+                console.log(levelHallways);
+
+                function placeNewRoomAndHallway(relToRoom, ourRoom, majorAxis /*string, pass it "x" for example*/, minorAxis /*the one to just offset it to give randomness*/, isPlus /*bool*/, majorLength, minorLength /*string of either W or H*/) {
+                    let newMajorValue = game.prng.nextInRangeRound(ourRoom[majorLength], ourRoom[majorLength] * roomSpreadOutness + game.prng.nextInRangeRound(0, Math.min(game.levelWidth, game.levelHeight) * game.prng.nextInRange(0, 1)));
+                    let newMinorValue = game.prng.nextInRangeRound(Math.ceil(-relToRoom[minorLength] / 4), Math.ceil(relToRoom[minorLength] / 2));
+
+                    ourRoom[majorAxis] += (isPlus ? newMajorValue : -newMajorValue);
+                    ourRoom[minorAxis] += newMinorValue;
+
+                    ourRoom[majorAxis] = clamp(ourRoom[majorAxis], 1, (majorAxis === "x" ? game.levelWidth : game.levelHeight) - ourRoom[majorLength] - 1);
+                    ourRoom[minorAxis] = clamp(ourRoom[minorAxis], 1, (minorAxis === "y" ? game.levelHeight : game.levelWidth) - ourRoom[minorLength] - 1);
+
+                    // TODO: check if intersects
+                    levelRooms.push(ourRoom);
+
+                    // place hallway between em too! since we're here lol
+                    if (!doRoomsTouch(relToRoom, ourRoom)) {
+                        const ourHallway = new Box();
+
+                        ourHallway[majorAxis] = (!isPlus ? ourRoom[majorAxis] : ourRoom[majorAxis] - Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]));
+                        ourHallway[minorAxis] = ourRoom[minorAxis] + Math.round(newMinorValue * 0.5);
+                        ourHallway[majorLength] = Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]) + 1;
+                        ourHallway[minorLength] = hallwaySize;
+
+                        levelHallways.push(ourHallway);
+                    }
+
+                    function doRoomsTouch(boxA, boxB) {
+                        return (Math.abs(boxA.x - boxB.x) * 2 <= (boxA.w + boxB.w)) && (Math.abs(boxA.y - boxB.y) * 2 <= (boxA.h + boxB.h));
                     }
                 }
-            }
-        })();
+            })();
 
-        (function createSpawnObjective() {
-            // TODO
-        })();
+            (function createSolidMiddleFiller() {
+                for (let i = 0; i < game.levelWidth * game.levelHeight; i++) {
+                    if (!newLevelGrid[i]) {
+                        newLevelGrid[i] = game.levelLegend.solidMiddle.create(0);
+                    }
+                }
+            })();
 
-        function printGrid(aspect) {
-            // little test to print out how our cavities are positioned atm
-            let strings = [];
-            for (let i = 0; i < game.levelHeight; i++) {
-                strings[i] = "";
+            /*
+            (function createWalls() {
+                // not all cells may be initialised, so just to keep it safe, i'll use a classic for loop instead of a for of loop
+                // TODO: make it prettier by making each wall have similar variations
                 for (let x = 0; x < game.levelWidth; x++) {
-                    strings[i] += newLevelGrid[x + game.levelWidth * i][aspect];
+                    let createdWall = game.levelLegend.solidWall.create(game.prng.nextInRangeRound(0, game.levelLegend.solidWall.variants));
+                    for (let y = 0; y < game.levelHeight; y++) {
+                        if (x === 0 || y === 0 || x === game.levelWidth - 1 || y === game.levelHeight - 1) {
+                            // sometimes the hallway can poke out of the "boundary", leaking into the void, just seal up the flipping box
+                            newLevelGrid[x + game.levelWidth * y] = createdWall;
+                        }
+                        else if (newLevelGrid[x + game.levelWidth * y].icon === game.levelLegend.openMiddle.icon || newLevelGrid[x + game.levelWidth * y].icon === game.levelLegend.openHallway.icon) {
+                            // for some reason, if i put all those 4 cases into one switch statement, it just won't work properly lol
+                            // TODO: too lazy to make this a bunch of if's instead of this monstrosity
+                            switch (game.levelLegend.solidMiddle.icon) {
+                                case newLevelGrid[(x + 1) + game.levelWidth * y].icon:
+                                    newLevelGrid[(x + 1) + game.levelWidth * y] = createdWall;
+                                    break;
+                            }
+                            switch (game.levelLegend.solidMiddle.icon) {
+                                case newLevelGrid[(x - 1) + game.levelWidth * y].icon:
+                                    newLevelGrid[(x - 1) + game.levelWidth * y] = createdWall;
+                                    break;
+                            }
+                            switch (game.levelLegend.solidMiddle.icon) {
+                                case newLevelGrid[x + game.levelWidth * (y + 1)].icon:
+                                    newLevelGrid[x + game.levelWidth * (y + 1)] = createdWall;
+                                    break;
+                            }
+                            switch (game.levelLegend.solidMiddle.icon) {
+                                case newLevelGrid[x + game.levelWidth * (y - 1)].icon:
+                                    newLevelGrid[x + game.levelWidth * (y - 1)] = createdWall;
+                                    break;
+                            }
+                        }
+                    }
                 }
-                strings[i] += i.toString();
-                console.log(strings[i]);
+            })();
+
+            (function createDoors() {
+                // sees if both the left and right, or above and below blocks are walls, if so, place a door
+                // i don't want too many doors lol, so let's just sample in chunks, like one door per 8x8
+                const chunkSize = 8;
+
+                for (let chunkX = 0; chunkX < game.levelWidth; chunkX += chunkSize) {
+                    for (let chunkY = 0; chunkY < game.levelHeight; chunkY += chunkSize) {
+                        for (let x = chunkX; x < chunkX + chunkSize; x++) {
+                            for (let y = chunkY; y < chunkY + chunkSize; y++) {
+                                if (x === 0 || y === 0 || x === game.levelWidth - 1 || y === game.levelHeight - 1) {
+                                    break;
+                                }
+                                // if left and right are walls, and top and bottom not a wall, and current is a hallway
+                                if (newLevelGrid[(x + 1) + game.levelWidth * y].icon === game.levelLegend.solidWall.icon && newLevelGrid[(x - 1) + game.levelWidth * y].icon === game.levelLegend.solidWall.icon && newLevelGrid[x + game.levelWidth * (y + 1)].icon !== game.levelLegend.solidWall.icon && newLevelGrid[x + game.levelWidth * (y - 1)].icon !== game.levelLegend.solidWall.icon && newLevelGrid[x + game.levelWidth * y].icon === game.levelLegend.openHallway.icon) {
+                                    // even number, so variant total/2 - get random from that range, and multiply by 2
+                                    newLevelGrid[x + game.levelWidth * y] = game.levelLegend.solidDoor.create(game.prng.nextInRangeRound(0, game.levelLegend.solidDoor.variants * 0.5) * 2);
+                                    x = game.levelWidth; // cheap way to break out of nested loop
+                                    y = game.levelHeight;
+                                }
+                                else if (newLevelGrid[x + game.levelWidth * (y + 1)].icon === game.levelLegend.solidWall.icon && newLevelGrid[x + game.levelWidth * (y - 1)].icon === game.levelLegend.solidWall.icon && newLevelGrid[(x + 1) + game.levelWidth * y].icon !== game.levelLegend.solidWall.icon && newLevelGrid[(x - 1) + game.levelWidth * y].icon !== game.levelLegend.solidWall.icon && newLevelGrid[x + game.levelWidth * y].icon === game.levelLegend.openHallway.icon) {
+                                    newLevelGrid[x + game.levelWidth * y] = game.levelLegend.solidDoor.create(game.prng.nextInRangeFloor(1, game.levelLegend.solidDoor.variants * 0.5) * 2 - 1);
+                                    x = game.levelWidth;
+                                    y = game.levelHeight;
+                                }
+                            }
+                        }
+                    }
+                }
+            })();
+            */
+
+            (function createSpawnObjective() {
+                // TODO
+            })();
+
+            function printGrid(aspect) {
+                // little test to print out how our cavities are positioned atm
+                let strings = [];
+                for (let i = 0; i < game.levelHeight; i++) {
+                    strings[i] = "";
+                    for (let x = 0; x < game.levelWidth; x++) {
+                        strings[i] += newLevelGrid[x + game.levelWidth * i][aspect];
+                    }
+                    strings[i] += i.toString();
+                    console.log(strings[i]);
+                }
+                let legendString = "";
+                for (legendElement in game.levelLegend) {
+                    // TODO: it looks more like a square on chrome's console when i do it twice
+                    legendString += legendElement + "'s icon: " + game.levelLegend[legendElement].icon + "'  ";
+                }
+                console.log("Legend:");
+                console.log(legendString);
             }
-            let legendString = "";
-            for (legendElement in game.levelLegend) {
-                // TODO: it looks more like a square on chrome's console when i do it twice
-                legendString += legendElement + "'s icon: " + game.levelLegend[legendElement].icon + "'  ";
-            }
-            console.log("Legend:");
-            console.log(legendString);
-        }
-        printGrid("icon");
-        printGrid("variant");
+            printGrid("icon");
+            printGrid("variant");
+        })();
 
         (function createLevelScene() {
             // ooh, actual "3d" stuff
@@ -309,17 +317,17 @@ function nubenstein() {
                     this.a = a; // 0 to 255, surprisingly, and not from 0-1 since its - well an array of uints
                 }
 
-                const colourTheme = new ColourRGBA(game.prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 4), game.prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 4), game.prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 4), 255);
-
                 function createWallTextures() {
                     let wallTexture;
                     let wallData = new Uint8Array(texSize * texSize * 4 * game.levelLegend.solidWall.variants); // 4 for rgba components
 
-                    for (let variant = 0; variant < game.levelLegend.solidWall.variants * texSize; variant+=texSize) {
+                    for (let variant = 0; variant < game.levelLegend.solidWall.variants * texSize; variant += texSize) {
+                        const colourTheme = new ColourRGBA(game.prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 4), game.prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 4), game.prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 4), 255);
+
                         const brickWidth = game.prng.nextInRangeRound(3, 8) * 2 - 1;
                         const brickHeight = 4;
                         const fillerSize = 1;
-                        const fillerColour = new ColourRGBA(clamp(colourTheme.r-maxColourDiff*4,maxColourDiff*2,255), clamp(colourTheme.g-maxColourDiff*4,maxColourDiff*2,255), clamp(colourTheme.b-maxColourDiff*4,maxColourDiff*2,255), 255);
+                        const fillerColour = new ColourRGBA(clamp(colourTheme.r - maxColourDiff * 4, maxColourDiff * 2, 255), clamp(colourTheme.g - maxColourDiff * 4, maxColourDiff * 2, 255), clamp(colourTheme.b - maxColourDiff * 4, maxColourDiff * 2, 255), 255);
 
                         const bricks = [];
 
@@ -340,7 +348,7 @@ function nubenstein() {
 
                         for (brick of bricks) {
                             for (let x = brick.x; x < brick.x + brick.w; x++) {
-                                for (let y = brick.y+variant; y < brick.y + brick.h+variant; y++) {
+                                for (let y = brick.y + variant; y < brick.y + brick.h + variant; y++) {
                                     wallData[4 * (x + texSize * y) + 0] = brick.colour.r + game.prng.nextInRangeFloor(-maxColourDiff / 2, maxColourDiff / 2);
                                     wallData[4 * (x + texSize * y) + 1] = brick.colour.g + game.prng.nextInRangeFloor(-maxColourDiff / 2, maxColourDiff / 2);
                                     wallData[4 * (x + texSize * y) + 2] = brick.colour.b + game.prng.nextInRangeFloor(-maxColourDiff / 2, maxColourDiff / 2);
@@ -350,7 +358,7 @@ function nubenstein() {
                         }
 
                         for (let x = 0; x < texSize; x++) {
-                            for (let y = variant; y < texSize+variant; y++) {
+                            for (let y = variant; y < texSize + variant; y++) {
                                 if (!wallData[4 * (x + texSize * y) + 0] || !wallData[4 * (x + texSize * y) + 1] || !wallData[4 * (x + texSize * y) + 2] || !wallData[4 * (x + texSize * y) + 3]) {
                                     wallData[4 * (x + texSize * y) + 0] = fillerColour.r + game.prng.nextInRangeFloor(-maxColourDiff / 2, maxColourDiff / 2);
                                     wallData[4 * (x + texSize * y) + 1] = fillerColour.g + game.prng.nextInRangeFloor(-maxColourDiff / 2, maxColourDiff / 2);
@@ -360,7 +368,7 @@ function nubenstein() {
                             }
                         }
                     }
-                    wallTexture = new THREE.DataTexture(wallData, texSize, texSize*game.levelLegend.solidWall.variants, THREE.RGBAFormat, THREE.UnsignedByteType, THREE.UVMapping);
+                    wallTexture = new THREE.DataTexture(wallData, texSize, texSize * game.levelLegend.solidWall.variants, THREE.RGBAFormat, THREE.UnsignedByteType, THREE.UVMapping);
                     wallTexture.needsUpdate = true;
                     return wallTexture;
                 }
@@ -416,12 +424,12 @@ function nubenstein() {
                             case game.levelLegend.solidWall.icon:
                                 (function pushWallGeometry() {
                                     // check each side, north/south/west/east if its open middle
-                                    if(x !== game.levelWidth-1 && newLevelGrid[(x+1) + game.levelWidth * y].icon !== game.levelLegend.solidMiddle.icon) {
+                                    if (x !== game.levelWidth - 1 && newLevelGrid[(x + 1) + game.levelWidth * y].icon !== game.levelLegend.solidMiddle.icon) {
                                         positions = positions.concat([
-                                            0+x+wallCellSize, wallCellSize, 0+y,
-                                            0+x+wallCellSize, wallCellSize, wallCellSize+y,
-                                            0+x+wallCellSize, 0, 0+y,
-                                            0+x+wallCellSize, 0, wallCellSize+y
+                                            0 + x + wallCellSize, wallCellSize, 0 + y,
+                                            0 + x + wallCellSize, wallCellSize, wallCellSize + y,
+                                            0 + x + wallCellSize, 0, 0 + y,
+                                            0 + x + wallCellSize, 0, wallCellSize + y
                                         ]);
                                         normals = normals.concat([
                                             1, 0, 0,
@@ -431,12 +439,12 @@ function nubenstein() {
                                         ]);
                                         concatUVsIndices();
                                     }
-                                    if(x !== 0 && newLevelGrid[(x-1) + game.levelWidth * y].icon !== game.levelLegend.solidMiddle.icon) {
+                                    if (x !== 0 && newLevelGrid[(x - 1) + game.levelWidth * y].icon !== game.levelLegend.solidMiddle.icon) {
                                         positions = positions.concat([
-                                            0+x, wallCellSize, 0+y,
-                                            0+x, wallCellSize, wallCellSize+y,
-                                            0+x, 0, 0+y,
-                                            0+x, 0, wallCellSize+y
+                                            0 + x, wallCellSize, 0 + y,
+                                            0 + x, wallCellSize, wallCellSize + y,
+                                            0 + x, 0, 0 + y,
+                                            0 + x, 0, wallCellSize + y
                                         ]);
                                         normals = normals.concat([
                                             -1, 0, 0,
@@ -446,12 +454,12 @@ function nubenstein() {
                                         ]);
                                         concatUVsIndices();
                                     }
-                                    if(y !== game.levelHeight-1 && newLevelGrid[x + game.levelWidth * (y+1)].icon !== game.levelLegend.solidMiddle.icon) {
+                                    if (y !== game.levelHeight - 1 && newLevelGrid[x + game.levelWidth * (y + 1)].icon !== game.levelLegend.solidMiddle.icon) {
                                         positions = positions.concat([
-                                            wallCellSize+x, wallCellSize, 0+y+wallCellSize,
-                                            0+x, wallCellSize, 0+y+wallCellSize,
-                                            wallCellSize+x, 0, 0+y+wallCellSize,
-                                            0+x, 0, 0+y+wallCellSize
+                                            wallCellSize + x, wallCellSize, 0 + y + wallCellSize,
+                                            0 + x, wallCellSize, 0 + y + wallCellSize,
+                                            wallCellSize + x, 0, 0 + y + wallCellSize,
+                                            0 + x, 0, 0 + y + wallCellSize
                                         ]);
                                         normals = normals.concat([
                                             0, 0, 1,
@@ -461,12 +469,12 @@ function nubenstein() {
                                         ]);
                                         concatUVsIndices();
                                     }
-                                    if(y !== 0 && newLevelGrid[x + game.levelWidth * (y-1)].icon !== game.levelLegend.solidMiddle.icon) {
+                                    if (y !== 0 && newLevelGrid[x + game.levelWidth * (y - 1)].icon !== game.levelLegend.solidMiddle.icon) {
                                         positions = positions.concat([
-                                            wallCellSize+x, wallCellSize, 0+y,
-                                            0+x, wallCellSize, 0+y,
-                                            wallCellSize+x, 0, 0+y,
-                                            0+x, 0, 0+y
+                                            wallCellSize + x, wallCellSize, 0 + y,
+                                            0 + x, wallCellSize, 0 + y,
+                                            wallCellSize + x, 0, 0 + y,
+                                            0 + x, 0, 0 + y
                                         ]);
                                         normals = normals.concat([
                                             0, 0, -1,
@@ -482,17 +490,17 @@ function nubenstein() {
                                         uvs = uvs.concat([
                                             0, (1 / game.levelLegend.solidWall.variants) * newLevelGrid[x + game.levelWidth * y].variant,
                                             1, (1 / game.levelLegend.solidWall.variants) * newLevelGrid[x + game.levelWidth * y].variant,
-                                            0, (1 / (game.levelLegend.solidWall.variants) * (newLevelGrid[x + game.levelWidth * y].variant+1)),
-                                            1, (1 / (game.levelLegend.solidWall.variants) * (newLevelGrid[x + game.levelWidth * y].variant+1))
+                                            0, (1 / (game.levelLegend.solidWall.variants) * (newLevelGrid[x + game.levelWidth * y].variant + 1)),
+                                            1, (1 / (game.levelLegend.solidWall.variants) * (newLevelGrid[x + game.levelWidth * y].variant + 1))
                                         ]);
-                                        const indexOffset = (positions.length/posAttribSize)-4; // 4 vertices
+                                        const indexOffset = (positions.length / posAttribSize) - 4; // 4 vertices
                                         indices = indices.concat([
-                                            indexOffset+0,
-                                            indexOffset+2,
-                                            indexOffset+1,
-                                            indexOffset+2,
-                                            indexOffset+3,
-                                            indexOffset+1
+                                            indexOffset + 0,
+                                            indexOffset + 2,
+                                            indexOffset + 1,
+                                            indexOffset + 2,
+                                            indexOffset + 3,
+                                            indexOffset + 1
                                         ]);
                                     }
                                 })();
@@ -508,15 +516,7 @@ function nubenstein() {
                 levelGeometry.addAttribute("uv", new THREE.BufferAttribute(new Float32Array(uvs), uvAttribSize));
                 levelGeometry.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
 
-                // dunno if this is needed
-                levelGeometry.offsets = [
-                    {
-                        start: 0,
-                        index: 0,
-                        count: indices.length
-                    }
-                ];
-                
+                // TODO: idk if i did the culling order wrong, probably did lol, so now i have to succumb to double sided rendering
                 let mat = new THREE.MeshBasicMaterial({ map: textures.walls, side: THREE.DoubleSide, transparent: true });
                 mat.needsUpdate = true;
                 var mesh = new THREE.Mesh(levelGeometry, mat);
