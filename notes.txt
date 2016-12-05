@@ -56,3 +56,9 @@ work on buffergeometry
 buffergeometry works! i forgot that you had to pass in a BufferAttribute to .setIndex,
 instead of being a cucking idiot and just giving it the array
 i blame dynamic type inference
+
+4 Dec 2016
+homework :(
+level generation looks too ugly right now, so i'm gonna fix it up a bit by giving each
+room its own variant, and placing doors logically at the end of hallways
+one day i'll need to do a search on all the "TODO"'s i've fulfilled but never removed lol

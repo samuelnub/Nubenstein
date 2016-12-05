@@ -36,13 +36,12 @@ function nubenstein() {
         game.levelLegend = {
             solidMiddle: new LevelLegendElementCreator("M", 1),
             solidWall: new LevelLegendElementCreator("W", 16), // a wall has at least one side that is exposed to the open
-            solidDoor: new LevelLegendElementCreator("D", 2), // 2 variants, even numbers (eg 0, 2) will be horizontal (slides open along x) and odds will be vertical variants
+            solidDoor: new LevelLegendElementCreator("D", 2), // orientation will be decided at scene-creation time
             solidObjective: new LevelLegendElementCreator("O", 16), // that elevator at the end of a level
             solidSpawn: new LevelLegendElementCreator("S", 16), // visual block
             openSpawn: new LevelLegendElementCreator("s", 1), // the place where the player will pop in
             openMiddle: new LevelLegendElementCreator(" ", 16), // 
             openDoor: new LevelLegendElementCreator("d", 2),
-            openHallway: new LevelLegendElementCreator("'", 1),
             openEnemySpawn: new LevelLegendElementCreator("e", 16),
             openPickup: new LevelLegendElementCreator("p", 16)
         };
@@ -87,7 +86,7 @@ function nubenstein() {
         (function createLevelGrid() {
             (function createRoomsAndHallways() {
                 // Plonk some cavities, see if they overlap, if so, discard, if not, insert it into level
-                const maxRoomCount = game.prng.nextInRangeRound(Math.min(game.levelWidth, game.levelHeight), Math.max(game.levelWidth, game.levelHeight)) * 1.5;
+                const maxRoomCount = game.prng.nextInRangeRound(Math.min(game.levelWidth, game.levelHeight), Math.max(game.levelWidth, game.levelHeight)) * 1.1;
                 const minRoomWH = 2;
                 const maxRoomWH = 6; // exclusive
                 const roomSpreadOutness = game.prng.nextInRangeRound(2, 8);
@@ -136,24 +135,62 @@ function nubenstein() {
                     }
                 }
 
-                (function fillOpenMiddlesAndSolidWalls() {
+                (function fillOpenMiddlesAndSolidWallsAndDoors() {
                     for(room of levelRooms) {
                         for(let x = room.x; x < room.x + room.w; x++) {
                             for(let y = room.y; y < room.y + room.h; y++) {
-                                let openMiddleVariant = game.prng.nextInRangeFloor(0, game.levelLegend.openMiddle.variants);
-                                newLevelGrid[x + game.levelWidth * y] = game.levelLegend.openMiddle.create(openMiddleVariant);
+                                newLevelGrid[x + game.levelWidth * y] = game.levelLegend.openMiddle.create(game.prng.nextInRangeFloor(0, game.levelLegend.openMiddle.variants));
                             }
                         }
-
-                        // put walls
+                        surroundWithWalls(room);
                     }
-                    
-                    // for each hallway, similar to the one above
+
+                    let tempDoorSurrounderBlocks = []; // ensure that these have bricks, overwrite afterwards
+
+                    for(hallway of levelHallways) {
+                        surroundWithWalls(hallway); // has to be done before, cause door placement checks if left and right have walls
+                        for(let x = hallway.x; x < hallway.x + hallway.w; x++) {
+                            for(let y = hallway.y; y < hallway.y + hallway.h; y++) {
+                                newLevelGrid[x + game.levelWidth * y] = game.levelLegend.openMiddle.create(game.prng.nextInRangeFloor(0, game.levelLegend.openMiddle.variants));
+                                
+                                // door placement
+                                if((hallway.w === hallwaySize && (y === hallway.y || y === hallway.y + hallway.h-1)) || (hallway.h === hallwaySize && (x === hallway.x || x === hallway.x + hallway.w-1))) {
+                                    newLevelGrid[x + game.levelWidth * y] = game.levelLegend.solidDoor.create(game.prng.nextInRangeFloor(0, game.levelLegend.solidDoor.variants));
+                                    
+                                    tempDoorSurrounderBlocks[(x+1) + game.levelWidth * y] = newLevelGrid[(x+1) + game.levelWidth * y];
+                                    tempDoorSurrounderBlocks[(x-1) + game.levelWidth * y] = newLevelGrid[(x-1) + game.levelWidth * y];
+                                    tempDoorSurrounderBlocks[x + game.levelWidth * (y+1)] = newLevelGrid[x + game.levelWidth * (y+1)];
+                                    tempDoorSurrounderBlocks[x + game.levelWidth * (y-1)] = newLevelGrid[x + game.levelWidth * (y-1)];
+                                }
+                            }
+                        }
+                    }
+
+                    // give each door a clear pair of blocks on each side
+                    for(let x = 0; x < game.levelWidth; x++) {
+                        for(let y = 0; y < game.levelHeight; y++) {
+                            if(newLevelGrid[x + game.levelWidth * y] && newLevelGrid[x + game.levelWidth * y].icon === game.levelLegend.solidDoor.icon) {
+                                newLevelGrid[(x+1) + game.levelWidth * y] = tempDoorSurrounderBlocks[(x+1) + game.levelWidth * y];
+                                newLevelGrid[(x-1) + game.levelWidth * y] = tempDoorSurrounderBlocks[(x-1) + game.levelWidth * y];
+                                newLevelGrid[x + game.levelWidth * (y+1)] = tempDoorSurrounderBlocks[x + game.levelWidth * (y+1)];
+                                newLevelGrid[x + game.levelWidth * (y-1)] = tempDoorSurrounderBlocks[x + game.levelWidth * (y-1)];
+                            }
+                        }
+                    }
+
+                    function surroundWithWalls(box) {
+                        let wallVariant = game.prng.nextInRangeFloor(0, game.levelLegend.solidWall.variants);
+                        for(let x = box.x-1; x < box.x + box.w+1; x++) {
+                            for(let y = box.y-1; y < box.y + box.h+1; y++) {
+                                if((x >= 0 && x < game.levelWidth) && (y >= 0 && y < game.levelHeight) && !newLevelGrid[x + game.levelWidth * y]) {
+                                    newLevelGrid[x + game.levelWidth * y] = game.levelLegend.solidWall.create(wallVariant);
+                                }
+                            }
+                        }
+                    }
 
                     // TODO: wrap the edge with a wall
                 })();
-
-                console.log(levelHallways);
 
                 function placeNewRoomAndHallway(relToRoom, ourRoom, majorAxis /*string, pass it "x" for example*/, minorAxis /*the one to just offset it to give randomness*/, isPlus /*bool*/, majorLength, minorLength /*string of either W or H*/) {
                     let newMajorValue = game.prng.nextInRangeRound(ourRoom[majorLength], ourRoom[majorLength] * roomSpreadOutness + game.prng.nextInRangeRound(0, Math.min(game.levelWidth, game.levelHeight) * game.prng.nextInRange(0, 1)));
@@ -174,7 +211,7 @@ function nubenstein() {
 
                         ourHallway[majorAxis] = (!isPlus ? ourRoom[majorAxis] : ourRoom[majorAxis] - Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]));
                         ourHallway[minorAxis] = ourRoom[minorAxis] + Math.round(newMinorValue * 0.5);
-                        ourHallway[majorLength] = Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]) + 1;
+                        ourHallway[majorLength] = Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]);
                         ourHallway[minorLength] = hallwaySize;
 
                         levelHallways.push(ourHallway);
