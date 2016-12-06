@@ -62,3 +62,10 @@ homework :(
 level generation looks too ugly right now, so i'm gonna fix it up a bit by giving each
 room its own variant, and placing doors logically at the end of hallways
 one day i'll need to do a search on all the "TODO"'s i've fulfilled but never removed lol
+
+5 Dec 2016
+oh dude, you can do true === true && true, instead of true === true && true === true, damn
+made room wall creation look a bit better, and door placement now makes a little bit more
+sense lol
+
+6 Dec 2016
