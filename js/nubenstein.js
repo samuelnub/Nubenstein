@@ -9,7 +9,7 @@
     document.head.appendChild(threejsElement);
 })();
 
-function nubenstein() {
+function Nubenstein() {
     // Setting up consts and other variables
     const nubElement = document.getElementById("nubenstein");
     if (!nubElement) {
@@ -48,7 +48,7 @@ function nubenstein() {
         game.levelWidth = 48; // don't try and write to self you nincompoop
         game.levelHeight = 48; // don't write to self either you lobster
         game.levelGrid = [];
-        game.transformer = new Transformer(); // "static" helper
+        game.collider = new Collider(); // "static" helper
         game.prng = new PRNG((nubElement.getAttribute("seed") ? nubElement.getAttribute("seed") : Math.random() * (10000 - 1) + 1));
         game.input = new Input();
         game.player = new Player();
@@ -141,7 +141,7 @@ function nubenstein() {
                     levelRooms.push(ourRoom);
 
                     // place hallway between em too! since we're here lol
-                    if (!game.transformer.doesBoxCollideBox(relToRoom, ourRoom)) {
+                    if (!game.collider.doesBoxCollideBox(relToRoom, ourRoom)) {
                         const ourHallway = new Box();
 
                         ourHallway[majorAxis] = (!isPlus ? ourRoom[majorAxis] : ourRoom[majorAxis] - Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]));
@@ -182,6 +182,7 @@ function nubenstein() {
                                     // nice function naming...
                                     function addDoorAndSurroundIt() {
                                         newLevelGrid[x + game.levelWidth * y] = game.levelLegend.solidDoor.create(game.prng.nextInRangeFloor(0, game.levelLegend.solidDoor.variants));
+                                        tempDoorSurrounderBlocks[x + game.levelWidth * y] = newLevelGrid[x + game.levelWidth * y];
                                         tempDoorSurrounderBlocks[(x+1) + game.levelWidth * y] = newLevelGrid[(x+1) + game.levelWidth * y];
                                         tempDoorSurrounderBlocks[(x-1) + game.levelWidth * y] = newLevelGrid[(x-1) + game.levelWidth * y];
                                         tempDoorSurrounderBlocks[x + game.levelWidth * (y+1)] = newLevelGrid[x + game.levelWidth * (y+1)];
@@ -196,6 +197,7 @@ function nubenstein() {
                     for(let x = 0; x < game.levelWidth; x++) {
                         for(let y = 0; y < game.levelHeight; y++) {
                             if(newLevelGrid[x + game.levelWidth * y] && newLevelGrid[x + game.levelWidth * y].icon === game.levelLegend.solidDoor.icon) {
+                                newLevelGrid[x + game.levelWidth * y] = tempDoorSurrounderBlocks[x + game.levelWidth * y];
                                 newLevelGrid[(x+1) + game.levelWidth * y] = tempDoorSurrounderBlocks[(x+1) + game.levelWidth * y];
                                 newLevelGrid[(x-1) + game.levelWidth * y] = tempDoorSurrounderBlocks[(x-1) + game.levelWidth * y];
                                 newLevelGrid[x + game.levelWidth * (y+1)] = tempDoorSurrounderBlocks[x + game.levelWidth * (y+1)];
@@ -293,7 +295,7 @@ function nubenstein() {
 
                     for (let variant = 0; variant < game.levelLegend.solidWall.variants * texSize; variant += texSize) {
                         // TODO: make colour themes prettier
-                        const colourTheme = new ColourRGBA(game.prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 10), game.prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 10), game.prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 10), 255);
+                        const colourTheme = new ColourRGBA(game.prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 8), game.prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 8), game.prng.nextInRangeRound(maxColourDiff * 2, 255 - maxColourDiff * 8), 255);
 
                         const brickWidth = game.prng.nextInRangeRound(3, 8) * 2 - 1;
                         const brickHeight = 4;
@@ -619,7 +621,7 @@ function nubenstein() {
             total: 0
         };
 
-        (function initInput() {
+        (function init() {
             const element = game.renderer.domElement;
 
             element.setAttribute("id", "nubensteinCanvas");
@@ -713,32 +715,88 @@ function nubenstein() {
         };
     }
 
-    function Transformer() {
-        // helper class. i could use a const Transformer = ()(); for a "static" class, but heck, i dont want to put self definition at the front of the file
+    function Entities() {
+        // a singleton and factory class
         const self = this;
 
-        self.translateAddWorld = function (obj, vec, doCollision) {
+        let entityCount = 0;
+
+        const entities = {};
+
+        (function init() {
+
+        })();
+
+        self.create = function(params) {
+            let entity = new Entity(params);
+            
+            entities[entity.name] = entity;
+            return entities[entity.name];
+        };
+
+        self.getByName = function(name) {
+            return entities[name];
+        };
+
+        function Entity(params) {
+            const self = this; // nested this context works! yay
+
+            self.name = params.hasOwnProperty("name") ? params["name"] : "Ent-" + (++entityCount).toString();
+            self.id = params.hasOwnProperty("id") ? params["id"] : entityCount;
+            self.health = params.hasOwnProperty("health") ? params["health"] : 100;
+            self.renderable = params.hasOwnProperty("renderable") ? params["renderable"] : createTextSprite(self.name);
+
+            self.move = function(vec, collide) {
+
+            };
+
+            self.look = function(axis, rads, lock /*lock to world axis, good for yaw-ing with a camera*/) {
+                if(lock) {
+                    let rotMatWorld = new THREE.Matrix4();
+                    rotMatWorld.makeRotationAxis(axis.normalize(), rads);
+                    rotMatWorld.multiply(self.renderable.matrix);
+                    self.renderable.matrix = rotMatWorld;
+                    self.renderable.rotation.setFromRotationMatrix(obj.matrix);
+                }
+                else {
+                    // TODO
+                }
+            };
+        }
+    }
+
+    function Collider() {
+        // helper class. i could use a const collider = ()(); for a "static" class, but heck, i dont want to put self definition at the front of the file
+        const self = this;
+
+        self.move = function (obj, vec, doCollision) {
             if (typeof obj !== "object") {
                 return;
             }
             
+            // TODO collision if true
 
         }
 
-        self.rotateAddWorld = function (obj, axis /*three vector3*/, rads /*very rad*/) {
+        self.look = function (obj, axis /*three vector3*/, rads /*very rad*/) {
             if (typeof obj !== "object") {
                 return;
             }
-            let rotMatWorld = new THREE.Matrix4();
-            rotMatWorld.makeRotationAxis(axis.normalize(), rads);
-            rotMatWorld.multiply(obj.matrix);
-            obj.matrix = rotMatWorld;
-            obj.rotation.setFromRotationMatrix(obj.matrix);
-        }
+            
+        };
 
         self.doesBoxCollideBox = function (boxA, boxB) {
             return (Math.abs(boxA.x - boxB.x) * 2 <= (boxA.w + boxB.w)) && (Math.abs(boxA.y - boxB.y) * 2 <= (boxA.h + boxB.h));
         }
+
+        self.doesCircleCollideCircle = function(circleA, circleB) {
+            let dist = Math.sqrt(
+                (circleA.x - circleB.x) * (circleA.x - circleB.x) +
+                (circleA.y - circleB.y) * (circleA.y - circleB.y)
+            );
+
+            return dist < (circleA.r + circleB.r);
+        };
 
         self.doesCircleCollideBox = function (circle, box /*should be graphical position of box you wanna check collision with*/) {
             // http://stackoverflow.com/questions/401847/circle-rectangle-collision-detection-intersection
@@ -760,9 +818,9 @@ function nubenstein() {
                 return true;
             }
 
-            let cornerDistSqrt = Math.pow(cirDist.x - box.w/2,2) + Math.pow(cirDist.y - box.h/2,2);
+            let cornerDistSq = Math.pow(cirDist.x - box.w/2,2) + Math.pow(cirDist.y - box.h/2,2);
             return (cornerDistSqrt <= Math.pow(circle.r,2));
-        }
+        };
     }
 
     function Player() {
@@ -780,7 +838,7 @@ function nubenstein() {
             game.player.camera.fov = game.player.fov;
             game.player.camera.updateProjectionMatrix();
             return newFov;
-        }
+        };
 
         self.tick = function () {
             (function doMovement() {
@@ -788,7 +846,7 @@ function nubenstein() {
                     return;
                 }
 
-                // TODO: use transformer class to handle translation collisions with the levelGrid
+                // TODO: use collider class to handle translation collisions with the levelGrid
                 if (game.input.isKeyHeld(game.input.config.walkForward)) {
                     self.camera.translateZ(-0.1);
                 }
@@ -810,7 +868,7 @@ function nubenstein() {
                 }
 
                 // yaw
-                game.transformer.rotateAddWorld(self.camera, new THREE.Vector3(0.0, 1.0, 0.0), -game.input.mouseMoved().x * game.input.config.lookSensitivity);
+                game.collider.look(self.camera, new THREE.Vector3(0.0, 1.0, 0.0), -game.input.mouseMoved().x * game.input.config.lookSensitivity);
 
                 // pitch (shouldnt be in actual game)
                 self.camera.rotateX(-game.input.mouseMoved().y * game.input.config.lookSensitivity);
@@ -832,4 +890,4 @@ function nubenstein() {
     })();
 };
 
-window.onload = nubenstein;
+window.onload = Nubenstein;

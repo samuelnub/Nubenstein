@@ -69,3 +69,11 @@ made room wall creation look a bit better, and door placement now makes a little
 sense lol
 
 6 Dec 2016
+wibble wobble
+starting work on some collision detection, between boxes/circles, i'm just gonna stick
+with 2D collision testing, but it seems pretty easy to extend it to a third dimension
+
+7 Dec 2016
+Gonna make an entities class to manage and handle creation of entities, and you get to 
+keep an instance of an entity, which contains stuff like name, health, and renderable
+"Transformer" will also shift to just collision checking helper functions
