@@ -49,6 +49,7 @@ function Nubenstein() {
         game.levelHeight = 48; // don't write to self either you lobster
         game.levelGrid = [];
         game.collider = new Collider(); // "static" helper
+        game.entities = new Entities();
         game.prng = new PRNG((nubElement.getAttribute("seed") ? nubElement.getAttribute("seed") : Math.random() * (10000 - 1) + 1));
         game.input = new Input();
         game.player = new Player();
@@ -731,6 +732,7 @@ function Nubenstein() {
             let entity = new Entity(params);
             
             entities[entity.name] = entity;
+            game.scene.add(entities[entity.name].renderable);
             return entities[entity.name];
         };
 
@@ -741,13 +743,26 @@ function Nubenstein() {
         function Entity(params) {
             const self = this; // nested this context works! yay
 
-            self.name = params.hasOwnProperty("name") ? params["name"] : "Ent-" + (++entityCount).toString();
+            // visual things pertaining to the renderable will be stored in the THREE Object3D, since it already has the stuff we need. extra aspects are added on and wrapped in this class
+            self.name = params.hasOwnProperty("name") ? params["name"] : "ent-" + (++entityCount).toString();
             self.id = params.hasOwnProperty("id") ? params["id"] : entityCount;
             self.health = params.hasOwnProperty("health") ? params["health"] : 100;
             self.renderable = params.hasOwnProperty("renderable") ? params["renderable"] : createTextSprite(self.name);
+            
+            self.renderable.position = params.hasOwnProperty("spawnPos") ? params["spawnPos"] : new THREE.Vector3(0,0,0);
+            if (params.hasOwnProperty("spawnLookAt")) {
+                self.renderable.lookAt(params["spawnLookAt"]);
+            }
 
             self.move = function(vec, collide) {
-
+                if(collide) {
+                    // TODO
+                }
+                else {
+                    self.renderable.translateX(vec.x);
+                    self.renderable.translateY(vec.y);
+                    self.renderable.translateZ(vec.z);
+                }
             };
 
             self.look = function(axis, rads, lock /*lock to world axis, good for yaw-ing with a camera*/) {
@@ -756,10 +771,10 @@ function Nubenstein() {
                     rotMatWorld.makeRotationAxis(axis.normalize(), rads);
                     rotMatWorld.multiply(self.renderable.matrix);
                     self.renderable.matrix = rotMatWorld;
-                    self.renderable.rotation.setFromRotationMatrix(obj.matrix);
+                    self.renderable.rotation.setFromRotationMatrix(self.renderable.matrix);
                 }
                 else {
-                    // TODO
+                    self.renderable.rotateOnAxis(axis, rads);
                 }
             };
         }
@@ -768,22 +783,6 @@ function Nubenstein() {
     function Collider() {
         // helper class. i could use a const collider = ()(); for a "static" class, but heck, i dont want to put self definition at the front of the file
         const self = this;
-
-        self.move = function (obj, vec, doCollision) {
-            if (typeof obj !== "object") {
-                return;
-            }
-            
-            // TODO collision if true
-
-        }
-
-        self.look = function (obj, axis /*three vector3*/, rads /*very rad*/) {
-            if (typeof obj !== "object") {
-                return;
-            }
-            
-        };
 
         self.doesBoxCollideBox = function (boxA, boxB) {
             return (Math.abs(boxA.x - boxB.x) * 2 <= (boxA.w + boxB.w)) && (Math.abs(boxA.y - boxB.y) * 2 <= (boxA.h + boxB.h));
@@ -828,15 +827,16 @@ function Nubenstein() {
 
         // don't write to self externally, just a simple getter. set by using the func'
         self.fov = 75.0;
-        self.camera = new THREE.PerspectiveCamera(self.fov, game.width / game.height, 0.01, 1000);
-        game.scene.add(self.camera);
-
-        self.camera.position.z = 1;
+        self.camera = game.entities.create({
+            name: "player-camera",
+            renderable: new THREE.PerspectiveCamera(self.fov, game.width / game.height, 0.01, 1000),
+            spawnPos: new THREE.Vector3(0,0,0)
+        });
 
         self.setFov = function (newFov) {
-            game.player.fov = (typeof newFov === "number" ? newFov : game.player.fov);
-            game.player.camera.fov = game.player.fov;
-            game.player.camera.updateProjectionMatrix();
+            self.fov = (typeof newFov === "number" ? newFov : self.fov);
+            self.camera.renderable.fov = self.fov;
+            self.camera.renderable.updateProjectionMatrix();
             return newFov;
         };
 
@@ -848,30 +848,27 @@ function Nubenstein() {
 
                 // TODO: use collider class to handle translation collisions with the levelGrid
                 if (game.input.isKeyHeld(game.input.config.walkForward)) {
-                    self.camera.translateZ(-0.1);
+                    self.camera.move(new THREE.Vector3(0,0,-0.1), false);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkBackward)) {
-                    self.camera.translateZ(0.1);
+                    self.camera.move(new THREE.Vector3(0,0,0.1), false);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkLeft)) {
-                    self.camera.translateX(-0.1);
+                    self.camera.move(new THREE.Vector3(-0.1,0,0), false);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkRight)) {
-                    self.camera.translateX(0.1);
+                    self.camera.move(new THREE.Vector3(0.1,0,0), false);
                 }
 
                 if (game.input.isKeyHeld("i")) {
-                    console.log(self.camera.rotation.x);
-                    console.log(self.camera.position);
-                    console.log(self.camera.roataion);
+                    console.log(self.camera.renderable.rotation.x);
+                    console.log(self.camera.renderable.position);
+                    console.log(self.camera.renderable.roataion);
                     console.log(typeof self.camera);
                 }
 
-                // yaw
-                game.collider.look(self.camera, new THREE.Vector3(0.0, 1.0, 0.0), -game.input.mouseMoved().x * game.input.config.lookSensitivity);
-
-                // pitch (shouldnt be in actual game)
-                self.camera.rotateX(-game.input.mouseMoved().y * game.input.config.lookSensitivity);
+                self.camera.look(new THREE.Vector3(0.0, 1.0, 0.0), -game.input.mouseMoved().x * game.input.config.lookSensitivity, true);
+                self.camera.look(new THREE.Vector3(1.0, 0, 0.0), -game.input.mouseMoved().y * game.input.config.lookSensitivity, false);
             })();
         };
     }
@@ -886,7 +883,7 @@ function Nubenstein() {
 
         game.input.tick(); // self clears the mouse moved state to 0, so it has to be done once all other objects have queried its stuff
 
-        game.renderer.render(game.scene, game.player.camera);
+        game.renderer.render(game.scene, game.player.camera.renderable);
     })();
 };
 
