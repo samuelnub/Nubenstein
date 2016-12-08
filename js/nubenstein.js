@@ -48,6 +48,8 @@ function Nubenstein() {
         game.levelWidth = 48; // don't try and write to self you nincompoop
         game.levelHeight = 48; // don't write to self either you lobster
         game.levelGrid = [];
+        game.levelGraphicalWallSize = 1.0;
+        game.levelSpawnPos = new THREE.Vector3(0,0,0); // to be changed every new level
         game.collider = new Collider(); // "static" helper
         game.entities = new Entities();
         game.prng = new PRNG((nubElement.getAttribute("seed") ? nubElement.getAttribute("seed") : Math.random() * (10000 - 1) + 1));
@@ -79,9 +81,9 @@ function Nubenstein() {
         (function createLevelGrid() {
             (function createRoomsAndHallways() {
                 // Plonk some cavities, see if they overlap, if so, discard, if not, insert it into level
-                const maxRoomCount = game.prng.nextInRangeRound(Math.min(game.levelWidth, game.levelHeight), Math.max(game.levelWidth, game.levelHeight)) * 0.9;
-                const minRoomWH = 2;
-                const maxRoomWH = 6; // exclusive
+                const maxRoomCount = game.prng.nextInRangeRound(Math.min(game.levelWidth, game.levelHeight), Math.max(game.levelWidth, game.levelHeight)) * 0.8;
+                const minRoomWH = 3;
+                const maxRoomWH = 8; // exclusive
                 const roomSpreadOutness = game.prng.nextInRangeRound(3, 8);
                 const hallwaySize = 1; // "width" if its from your perspective
 
@@ -172,7 +174,7 @@ function Nubenstein() {
                             for(let y = hallway.y; y < hallway.y + hallway.h; y++) {
                                 newLevelGrid[x + game.levelWidth * y] = game.levelLegend.openMiddle.create(game.prng.nextInRangeFloor(0, game.levelLegend.openMiddle.variants));
                                 
-                                if((hallway.w === hallwaySize && (y === hallway.y || y === hallway.y + hallway.h-1)) || (hallway.h === hallwaySize && (x === hallway.x || x === hallway.x + hallway.w-1))) {
+                                if((x !== 0 || x !== game.levelWidth-1 || y !== 0 || y !== game.levelHeight-1) && ((hallway.w === hallwaySize && (y === hallway.y || y === hallway.y + hallway.h-1)) || (hallway.h === hallwaySize && (x === hallway.x || x === hallway.x + hallway.w-1)))) {
                                     if(hallway.w === hallwaySize && (newLevelGrid[(x-1) + game.levelWidth * y].icon === game.levelLegend.solidWall.icon && newLevelGrid[(x+1) + game.levelWidth * y].icon === game.levelLegend.solidWall.icon) && (newLevelGrid[x + game.levelWidth * (y-1)].icon !== game.levelLegend.solidWall.icon && newLevelGrid[x + game.levelWidth * (y+1)].icon !== game.levelLegend.solidWall.icon)) {
                                         addDoorAndSurroundIt();
                                     }
@@ -381,7 +383,6 @@ function Nubenstein() {
                 const posAttribSize = 3;
                 const normAttribSize = 3;
                 const uvAttribSize = 2;
-                const wallCellSize = 1.0;
 
                 // each cell can has 4 possible sides (ooh, a pillar block technically)
                 let positions = [];
@@ -400,10 +401,10 @@ function Nubenstein() {
                                     // check each side, north/south/west/east if its open middle
                                     if (x !== game.levelWidth - 1 && newLevelGrid[(x + 1) + game.levelWidth * y].icon !== game.levelLegend.solidMiddle.icon) {
                                         positions = positions.concat([
-                                            0 + x + wallCellSize, wallCellSize, 0 + y,
-                                            0 + x + wallCellSize, wallCellSize, wallCellSize + y,
-                                            0 + x + wallCellSize, 0, 0 + y,
-                                            0 + x + wallCellSize, 0, wallCellSize + y
+                                            0 + x + game.levelGraphicalWallSize, game.levelGraphicalWallSize, 0 + y,
+                                            0 + x + game.levelGraphicalWallSize, game.levelGraphicalWallSize, game.levelGraphicalWallSize + y,
+                                            0 + x + game.levelGraphicalWallSize, 0, 0 + y,
+                                            0 + x + game.levelGraphicalWallSize, 0, game.levelGraphicalWallSize + y
                                         ]);
                                         normals = normals.concat([
                                             1, 0, 0,
@@ -415,10 +416,10 @@ function Nubenstein() {
                                     }
                                     if (x !== 0 && newLevelGrid[(x - 1) + game.levelWidth * y].icon !== game.levelLegend.solidMiddle.icon) {
                                         positions = positions.concat([
-                                            0 + x, wallCellSize, 0 + y,
-                                            0 + x, wallCellSize, wallCellSize + y,
+                                            0 + x, game.levelGraphicalWallSize, 0 + y,
+                                            0 + x, game.levelGraphicalWallSize, game.levelGraphicalWallSize + y,
                                             0 + x, 0, 0 + y,
-                                            0 + x, 0, wallCellSize + y
+                                            0 + x, 0, game.levelGraphicalWallSize + y
                                         ]);
                                         normals = normals.concat([
                                             -1, 0, 0,
@@ -430,10 +431,10 @@ function Nubenstein() {
                                     }
                                     if (y !== game.levelHeight - 1 && newLevelGrid[x + game.levelWidth * (y + 1)].icon !== game.levelLegend.solidMiddle.icon) {
                                         positions = positions.concat([
-                                            wallCellSize + x, wallCellSize, 0 + y + wallCellSize,
-                                            0 + x, wallCellSize, 0 + y + wallCellSize,
-                                            wallCellSize + x, 0, 0 + y + wallCellSize,
-                                            0 + x, 0, 0 + y + wallCellSize
+                                            game.levelGraphicalWallSize + x, game.levelGraphicalWallSize, 0 + y + game.levelGraphicalWallSize,
+                                            0 + x, game.levelGraphicalWallSize, 0 + y + game.levelGraphicalWallSize,
+                                            game.levelGraphicalWallSize + x, 0, 0 + y + game.levelGraphicalWallSize,
+                                            0 + x, 0, 0 + y + game.levelGraphicalWallSize
                                         ]);
                                         normals = normals.concat([
                                             0, 0, 1,
@@ -445,9 +446,9 @@ function Nubenstein() {
                                     }
                                     if (y !== 0 && newLevelGrid[x + game.levelWidth * (y - 1)].icon !== game.levelLegend.solidMiddle.icon) {
                                         positions = positions.concat([
-                                            wallCellSize + x, wallCellSize, 0 + y,
-                                            0 + x, wallCellSize, 0 + y,
-                                            wallCellSize + x, 0, 0 + y,
+                                            game.levelGraphicalWallSize + x, game.levelGraphicalWallSize, 0 + y,
+                                            0 + x, game.levelGraphicalWallSize, 0 + y,
+                                            game.levelGraphicalWallSize + x, 0, 0 + y,
                                             0 + x, 0, 0 + y
                                         ]);
                                         normals = normals.concat([
@@ -616,9 +617,8 @@ function Nubenstein() {
         let pointerLocked = false;
 
         const time = {
-            date: new Date(),
+            clock: new THREE.Clock(),
             delta: 0,
-            lastFrame: 0,
             total: 0
         };
 
@@ -703,16 +703,61 @@ function Nubenstein() {
         };
 
         self.getTimeTotal = function () {
+            // calling getElapsedTime just before getDelta() can invalidate getDelta, as it uses getDelta lol, making it return 0 often times
+            // https://github.com/mrdoob/three.js/issues/5696
             return time.total;
         };
 
         self.tick = function () {
-            time.total = time.date.getTime();
-            time.delta = time.total - time.lastFrame;
-            time.lastFrame = time.total;
+            time.delta = time.clock.getDelta();
+            time.total = time.clock.getElapsedTime();
 
             mouseMove.x = 0;
             mouseMove.y = 0;
+        };
+    }
+
+    function Collider() {
+        // you see comrade, when we of having badass name like "large hadron collider", enemy of thinks that we are stronk, but in real life, we are indeed weak like twigs
+        // helper class. i could use a const collider = ()(); for a "static" class, but heck, i dont want to put self definition at the front of the file
+        // this class; for now, just does collision in 2d :( so the 2d x and y becomes the 3d x and z
+        const self = this;
+
+        self.doesBoxCollideBox = function (boxA, boxB) {
+            return (Math.abs(boxA.x - boxB.x) * 2 <= (boxA.w + boxB.w)) && (Math.abs(boxA.y - boxB.y) * 2 <= (boxA.h + boxB.h));
+        }
+
+        self.doesCircleCollideCircle = function(circleA, circleB) {
+            let dist = Math.sqrt(
+                (circleA.x - circleB.x) * (circleA.x - circleB.x) +
+                (circleA.y - circleB.y) * (circleA.y - circleB.y)
+            );
+
+            return dist < (circleA.r + circleB.r);
+        };
+
+        self.doesCircleCollideBox = function (circle, box /*should be graphical position of box you wanna check collision with*/) {
+            // http://stackoverflow.com/questions/401847/circle-rectangle-collision-detection-intersection
+            let cirDist = {
+                x: Math.abs(circle.x - box.x),
+                y: Math.abs(circle.y - box.y)
+            };
+
+            if(cirDist.x > (box.w/2 + circle.r)) {
+                return false;
+            }
+            if(cirdist.y > (box.h/2 + circle.r)) {
+                return false;
+            }
+            if(cirDist.x <= (box.w/2)) {
+                return true;
+            }
+            if(cirDist.y <= (box.h/2)) {
+                return true;
+            }
+
+            let cornerDistSq = Math.pow(cirDist.x - box.w/2,2) + Math.pow(cirDist.y - box.h/2,2);
+            return (cornerDistSqrt <= Math.pow(circle.r,2));
         };
     }
 
@@ -780,48 +825,6 @@ function Nubenstein() {
         }
     }
 
-    function Collider() {
-        // helper class. i could use a const collider = ()(); for a "static" class, but heck, i dont want to put self definition at the front of the file
-        const self = this;
-
-        self.doesBoxCollideBox = function (boxA, boxB) {
-            return (Math.abs(boxA.x - boxB.x) * 2 <= (boxA.w + boxB.w)) && (Math.abs(boxA.y - boxB.y) * 2 <= (boxA.h + boxB.h));
-        }
-
-        self.doesCircleCollideCircle = function(circleA, circleB) {
-            let dist = Math.sqrt(
-                (circleA.x - circleB.x) * (circleA.x - circleB.x) +
-                (circleA.y - circleB.y) * (circleA.y - circleB.y)
-            );
-
-            return dist < (circleA.r + circleB.r);
-        };
-
-        self.doesCircleCollideBox = function (circle, box /*should be graphical position of box you wanna check collision with*/) {
-            // http://stackoverflow.com/questions/401847/circle-rectangle-collision-detection-intersection
-            let cirDist = {
-                x: Math.abs(circle.x - box.x),
-                y: Math.abs(circle.y - box.y)
-            };
-
-            if(cirDist.x > (box.w/2 + circle.r)) {
-                return false;
-            }
-            if(cirdist.y > (box.h/2 + circle.r)) {
-                return false;
-            }
-            if(cirDist.x <= (box.w/2)) {
-                return true;
-            }
-            if(cirDist.y <= (box.h/2)) {
-                return true;
-            }
-
-            let cornerDistSq = Math.pow(cirDist.x - box.w/2,2) + Math.pow(cirDist.y - box.h/2,2);
-            return (cornerDistSqrt <= Math.pow(circle.r,2));
-        };
-    }
-
     function Player() {
         const self = this;
 
@@ -830,8 +833,10 @@ function Nubenstein() {
         self.camera = game.entities.create({
             name: "player-camera",
             renderable: new THREE.PerspectiveCamera(self.fov, game.width / game.height, 0.01, 1000),
-            spawnPos: new THREE.Vector3(0,0,0)
+            spawnPos: new THREE.Vector3(0,0,-1) // TODO: doesnt work :((
         });
+
+        self.camera.renderable.position.z = 1;
 
         self.setFov = function (newFov) {
             self.fov = (typeof newFov === "number" ? newFov : self.fov);
@@ -848,16 +853,16 @@ function Nubenstein() {
 
                 // TODO: use collider class to handle translation collisions with the levelGrid
                 if (game.input.isKeyHeld(game.input.config.walkForward)) {
-                    self.camera.move(new THREE.Vector3(0,0,-0.1), false);
+                    self.camera.move(new THREE.Vector3(0,0,-10*game.input.getTimeDelta()), false);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkBackward)) {
-                    self.camera.move(new THREE.Vector3(0,0,0.1), false);
+                    self.camera.move(new THREE.Vector3(0,0,10*game.input.getTimeDelta()), false);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkLeft)) {
-                    self.camera.move(new THREE.Vector3(-0.1,0,0), false);
+                    self.camera.move(new THREE.Vector3(-10*game.input.getTimeDelta(),0,0), false);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkRight)) {
-                    self.camera.move(new THREE.Vector3(0.1,0,0), false);
+                    self.camera.move(new THREE.Vector3(10*game.input.getTimeDelta(),0,0), false);
                 }
 
                 if (game.input.isKeyHeld("i")) {
@@ -865,6 +870,7 @@ function Nubenstein() {
                     console.log(self.camera.renderable.position);
                     console.log(self.camera.renderable.roataion);
                     console.log(typeof self.camera);
+                    console.log(game.input.getTimeDelta());
                 }
 
                 self.camera.look(new THREE.Vector3(0.0, 1.0, 0.0), -game.input.mouseMoved().x * game.input.config.lookSensitivity, true);

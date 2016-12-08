@@ -77,3 +77,8 @@ with 2D collision testing, but it seems pretty easy to extend it to a third dime
 Gonna make an entities class to manage and handle creation of entities, and you get to 
 keep an instance of an entity, which contains stuff like name, health, and renderable
 "Transformer" will also shift to just collision checking helper functions
+
+8 Dec 2016
+fixed small chance of door placement checking an undefined cell
+sometimes its good to just hit refresh and muck about until you find something that breaks 
+lol
