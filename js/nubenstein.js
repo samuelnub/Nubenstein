@@ -21,7 +21,7 @@ function Nubenstein() {
     // curse you, semantics-of-the-"this"-context-in-javascript!
     {
         game.debug = true;
-        game.width = (nubElement.getAttribute("width") ? nubElement.getAttribute("width") : 800);
+        game.width = (nubElement.getAttribute("width") ? nubElement.getAttribute("width") : 800); // TODO: dynamic resolution changing via the tags
         game.height = (nubElement.getAttribute("height") ? nubElement.getAttribute("height") : 600);
         game.renderer = new THREE.WebGLRenderer();
         game.scene = new THREE.Scene(); // camera within self scene is handled by Player class
@@ -48,7 +48,7 @@ function Nubenstein() {
         game.levelWidth = 48; // don't try and write to self you nincompoop
         game.levelHeight = 48; // don't write to self either you lobster
         game.levelGrid = [];
-        game.levelGraphicalWallSize = 1;
+        game.levelGraphicalWallSize = 4.0;
         game.levelSpawnPos = new THREE.Vector3(0,0,0); // to be changed every new level
         game.collider = new Collider(); // "static" helper
         game.entities = new Entities();
@@ -400,7 +400,7 @@ function Nubenstein() {
                             case game.levelLegend.solidWall.icon:
                                 (function pushWallGeometry() {
                                     // check each side, north/south/west/east if its open middle
-                                    if (x !== game.levelWidth - 1 && newLevelGrid[(x + 1) + game.levelWidth * y].icon !== game.levelLegend.solidMiddle.icon) {
+                                    if (x !== game.levelWidth - 1 && newLevelGrid[(x + 1) + game.levelWidth * y].icon !== game.levelLegend.solidMiddle.icon && newLevelGrid[(x + 1) + game.levelWidth * y].icon !== game.levelLegend.solidWall.icon) {
                                         positions = positions.concat([
                                             0 + x*game.levelGraphicalWallSize + game.levelGraphicalWallSize, game.levelGraphicalWallSize, 0 + y*game.levelGraphicalWallSize,
                                             0 + x*game.levelGraphicalWallSize + game.levelGraphicalWallSize, game.levelGraphicalWallSize, game.levelGraphicalWallSize + y*game.levelGraphicalWallSize,
@@ -415,7 +415,7 @@ function Nubenstein() {
                                         ]);
                                         concatUVsIndices();
                                     }
-                                    if (x !== 0 && newLevelGrid[(x - 1) + game.levelWidth * y].icon !== game.levelLegend.solidMiddle.icon) {
+                                    if (x !== 0 && newLevelGrid[(x - 1) + game.levelWidth * y].icon !== game.levelLegend.solidMiddle.icon && newLevelGrid[(x - 1) + game.levelWidth * y].icon !== game.levelLegend.solidWall.icon) {
                                         positions = positions.concat([
                                             0 + x*game.levelGraphicalWallSize, game.levelGraphicalWallSize, 0 + y*game.levelGraphicalWallSize,
                                             0 + x*game.levelGraphicalWallSize, game.levelGraphicalWallSize, game.levelGraphicalWallSize + y*game.levelGraphicalWallSize,
@@ -430,7 +430,7 @@ function Nubenstein() {
                                         ]);
                                         concatUVsIndices();
                                     }
-                                    if (y !== game.levelHeight - 1 && newLevelGrid[x + game.levelWidth * (y + 1)].icon !== game.levelLegend.solidMiddle.icon) {
+                                    if (y !== game.levelHeight - 1 && newLevelGrid[x + game.levelWidth * (y + 1)].icon !== game.levelLegend.solidMiddle.icon && newLevelGrid[x + game.levelWidth * (y + 1)].icon !== game.levelLegend.solidWall.icon) {
                                         positions = positions.concat([
                                             game.levelGraphicalWallSize + x*game.levelGraphicalWallSize, game.levelGraphicalWallSize, 0 + y*game.levelGraphicalWallSize + game.levelGraphicalWallSize,
                                             0 + x*game.levelGraphicalWallSize, game.levelGraphicalWallSize, 0 + y*game.levelGraphicalWallSize + game.levelGraphicalWallSize,
@@ -445,7 +445,7 @@ function Nubenstein() {
                                         ]);
                                         concatUVsIndices();
                                     }
-                                    if (y !== 0 && newLevelGrid[x + game.levelWidth * (y - 1)].icon !== game.levelLegend.solidMiddle.icon) {
+                                    if (y !== 0 && newLevelGrid[x + game.levelWidth * (y - 1)].icon !== game.levelLegend.solidMiddle.icon && newLevelGrid[x + game.levelWidth * (y - 1)].icon !== game.levelLegend.solidWall.icon) {
                                         positions = positions.concat([
                                             game.levelGraphicalWallSize + x*game.levelGraphicalWallSize, game.levelGraphicalWallSize, 0 + y*game.levelGraphicalWallSize,
                                             0 + x*game.levelGraphicalWallSize, game.levelGraphicalWallSize, 0 + y*game.levelGraphicalWallSize,
@@ -792,7 +792,7 @@ function Nubenstein() {
             self.id = params.hasOwnProperty("id") ? params["id"] : entityCount;
             self.health = params.hasOwnProperty("health") ? params["health"] : 100;
             self.renderable = params.hasOwnProperty("renderable") ? params["renderable"] : createTextSprite(self.name);
-            self.hitRadius = params.hasOwnProperty("hitRadius") ? params["hitRadius"] : game.levelGraphicalWallSize * 0.2; // circular collision detection
+            self.hitRadius = params.hasOwnProperty("hitRadius") ? params["hitRadius"] : game.levelGraphicalWallSize * 0.15; // circular collision detection
             self.heightPlane = params.hasOwnProperty("heightPlane") ? params["heightPlane"] : game.levelGraphicalWallSize/2; // since our collision is just 2D, where should we lock the Y position of our renderable?
 
             self.renderable.position = params.hasOwnProperty("spawnPos") ? params["spawnPos"] : game.levelSpawnPos;
@@ -900,16 +900,16 @@ function Nubenstein() {
 
                 // TODO: use collider class to handle translation collisions with the levelGrid
                 if (game.input.isKeyHeld(game.input.config.walkForward)) {
-                    self.camera.move(new THREE.Vector3(0,0,-8*game.input.getTimeDelta()), !game.debug, !game.debug);
+                    self.camera.move(new THREE.Vector3(0,0,-6*game.levelGraphicalWallSize*game.input.getTimeDelta()), !game.debug, !game.debug);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkBackward)) {
-                    self.camera.move(new THREE.Vector3(0,0,8*game.input.getTimeDelta()), !game.debug, !game.debug);
+                    self.camera.move(new THREE.Vector3(0,0,6*game.levelGraphicalWallSize*game.input.getTimeDelta()), !game.debug, !game.debug);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkLeft)) {
-                    self.camera.move(new THREE.Vector3(-8*game.input.getTimeDelta(),0,0), !game.debug, !game.debug);
+                    self.camera.move(new THREE.Vector3(-6*game.levelGraphicalWallSize*game.input.getTimeDelta(),0,0), !game.debug, !game.debug);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkRight)) {
-                    self.camera.move(new THREE.Vector3(8*game.input.getTimeDelta(),0,0), !game.debug, !game.debug);
+                    self.camera.move(new THREE.Vector3(6*game.levelGraphicalWallSize*game.input.getTimeDelta(),0,0), !game.debug, !game.debug);
                 }
 
                 if (game.input.isKeyHeld("i")) {
