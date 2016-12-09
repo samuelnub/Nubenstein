@@ -85,3 +85,5 @@ lol
 starting on collision checking, really messy atm lol
 
 9 Dec 2016
+the collision functions _do_ work, its just that my "newPos" vector is screwed up lol
+got the collision working! now just need to work on "sliding when colliding"...
