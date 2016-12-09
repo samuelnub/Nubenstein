@@ -48,7 +48,7 @@ function Nubenstein() {
         game.levelWidth = 48; // don't try and write to self you nincompoop
         game.levelHeight = 48; // don't write to self either you lobster
         game.levelGrid = [];
-        game.levelGraphicalWallSize = 4.0;
+        game.levelGraphicalWallSize = 1.0;
         game.levelSpawnPos = new THREE.Vector3(0,0,0); // to be changed every new level
         game.collider = new Collider(); // "static" helper
         game.entities = new Entities();
@@ -741,10 +741,8 @@ function Nubenstein() {
             // https://yal.cc/rectangle-circle-intersection-test/
             let nearestX = Math.max(box.x, Math.min(circle.x, box.x + box.w));
             let nearestY = Math.max(box.y, Math.min(circle.y, box.y + box.h));
-
             let deltaX = circle.x - nearestX;
             let deltaY = circle.y - nearestY;
-            console.log(circle.r * circle.r);
             return (deltaX * deltaX + deltaY * deltaY) < (circle.r * circle.r);
         };
     }
@@ -809,10 +807,6 @@ function Nubenstein() {
                     potMat.multiply(tempMat);
                     let potPos = new THREE.Vector3();
                     potPos.setFromMatrixPosition(potMat);
-
-                    console.log("Current pos and new potential pos:");
-                    console.log(self.renderable.position);
-                    console.log(potPos);
 
                     let curCellX = Math.floor(potPos.x/game.levelGraphicalWallSize);
                     let curCellY = Math.floor(potPos.z/game.levelGraphicalWallSize);
