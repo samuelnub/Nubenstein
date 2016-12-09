@@ -174,7 +174,7 @@ function Nubenstein() {
                             for(let y = hallway.y; y < hallway.y + hallway.h; y++) {
                                 newLevelGrid[x + game.levelWidth * y] = game.levelLegend.openMiddle.create(game.prng.nextInRangeFloor(0, game.levelLegend.openMiddle.variants));
                                 
-                                if((x !== 0 || x !== game.levelWidth-1 || y !== 0 || y !== game.levelHeight-1) && ((hallway.w === hallwaySize && (y === hallway.y || y === hallway.y + hallway.h-1)) || (hallway.h === hallwaySize && (x === hallway.x || x === hallway.x + hallway.w-1)))) {
+                                if((x > 0 || x < game.levelWidth-1 || y > 0 || y < game.levelHeight-1) && ((hallway.w === hallwaySize && (y === hallway.y || y === hallway.y + hallway.h-1)) || (hallway.h === hallwaySize && (x === hallway.x || x === hallway.x + hallway.w-1)))) {
                                     if(hallway.w === hallwaySize && (newLevelGrid[(x-1) + game.levelWidth * y].icon === game.levelLegend.solidWall.icon && newLevelGrid[(x+1) + game.levelWidth * y].icon === game.levelLegend.solidWall.icon) && (newLevelGrid[x + game.levelWidth * (y-1)].icon !== game.levelLegend.solidWall.icon && newLevelGrid[x + game.levelWidth * (y+1)].icon !== game.levelLegend.solidWall.icon)) {
                                         addDoorAndSurroundIt();
                                     }
@@ -744,18 +744,22 @@ function Nubenstein() {
             };
 
             if(cirDist.x > (box.w/2 + circle.r)) {
+                console.log("collision false 1");
                 return false;
             }
-            if(cirdist.y > (box.h/2 + circle.r)) {
+            if(cirDist.y > (box.h/2 + circle.r)) {
+                console.log("collision false 2");
                 return false;
             }
             if(cirDist.x <= (box.w/2)) {
+                console.log("collision true 1");
                 return true;
             }
             if(cirDist.y <= (box.h/2)) {
+                console.log("collision true 2");
                 return true;
             }
-
+            console.log("collision final");
             let cornerDistSq = Math.pow(cirDist.x - box.w/2,2) + Math.pow(cirDist.y - box.h/2,2);
             return (cornerDistSqrt <= Math.pow(circle.r,2));
         };
@@ -768,6 +772,17 @@ function Nubenstein() {
         let entityCount = 0;
 
         const entities = {};
+
+        self.entityEntityCollision = false; // would be pretty performance intensive
+
+        // elements that will need collision checking
+        self.solidLevelElements = [
+            game.levelLegend.solidWall,
+            game.levelLegend.solidSpawn,
+            game.levelLegend.solidObjective,
+            game.levelLegend.solidMiddle,
+            game.levelLegend.solidDoor
+        ];
 
         (function init() {
 
@@ -793,20 +808,58 @@ function Nubenstein() {
             self.id = params.hasOwnProperty("id") ? params["id"] : entityCount;
             self.health = params.hasOwnProperty("health") ? params["health"] : 100;
             self.renderable = params.hasOwnProperty("renderable") ? params["renderable"] : createTextSprite(self.name);
-            
-            self.renderable.position = params.hasOwnProperty("spawnPos") ? params["spawnPos"] : new THREE.Vector3(0,0,0);
+            self.hitRadius = params.hasOwnProperty("hitRadius") ? params["hitRadius"] : 0.1; // circular collision detection
+            self.heightPlane = params.hasOwnProperty("heightPlane") ? params["heightPlane"] : 0.5; // since our collision is just 2D, where should we lock the Y position of our renderable?
+
+            self.renderable.position = params.hasOwnProperty("spawnPos") ? params["spawnPos"] : game.levelSpawnPos;
             if (params.hasOwnProperty("spawnLookAt")) {
                 self.renderable.lookAt(params["spawnLookAt"]);
             }
 
-            self.move = function(vec, collide) {
+            self.move = function(vec, collide, lockHeightPlane) {
                 if(collide) {
-                    // TODO
+                    let curMat = self.renderable.matrix.clone();
+                    curMat.makeTranslation(vec.x, vec.y, vec.z);
+                    let newPos = new THREE.Vector3();
+                    curMat.decompose(newPos, new THREE.Quaternion(), new THREE.Matrix4());
+
+                    let curCellX = Math.floor(self.renderable.position.x)/game.levelGraphicalWallSize;
+                    let curCellY = Math.floor(self.renderable.position.z)/game.levelGraphicalWallSize;
+
+                    let solidBoxes = [];
+                    for(let x = -1; x <= 1; x++) {
+                        for(let y = -1; y <= 1; y++) {
+                            if(x === 0 && y === 0) {
+                                break;
+                            }
+                            if(game.levelGrid[(curCellX + x) + game.levelWidth * (curCellY + y)]) {
+                                for (possibleElement of game.entities.solidLevelElements) {
+                                    if(game.levelGrid[(curCellX + x) + game.levelWidth * (curCellY + y)].icon === possibleElement.icon) {
+                                        solidBoxes.push(new Box((curCellX + x)*game.levelGraphicalWallSize, (curCellY + y)*game.levelGraphicalWallSize, game.levelGraphicalWallSize, game.levelGraphicalWallSize));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    for(box of solidBoxes) {
+                        console.log(solidBoxes[solidBoxes.length-1]);
+                        if(!game.collider.doesCircleCollideBox(new Circle(newPos.x, newPos.z, self.hitRadius), box)) {
+                            // TODO: pretty messed up here lol
+                            console.log("collided!");
+                            return;
+                        }
+                    }
+                    self.move(vec, false, lockHeightPlane);
+                    return;
                 }
                 else {
                     self.renderable.translateX(vec.x);
                     self.renderable.translateY(vec.y);
                     self.renderable.translateZ(vec.z);
+
+                    if(lockHeightPlane) {
+                        self.renderable.position.y = self.heightPlane;
+                    }
                 }
             };
 
@@ -853,16 +906,16 @@ function Nubenstein() {
 
                 // TODO: use collider class to handle translation collisions with the levelGrid
                 if (game.input.isKeyHeld(game.input.config.walkForward)) {
-                    self.camera.move(new THREE.Vector3(0,0,-10*game.input.getTimeDelta()), false);
+                    self.camera.move(new THREE.Vector3(0,0,-10*game.input.getTimeDelta()), !game.debug, !game.debug);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkBackward)) {
-                    self.camera.move(new THREE.Vector3(0,0,10*game.input.getTimeDelta()), false);
+                    self.camera.move(new THREE.Vector3(0,0,10*game.input.getTimeDelta()), !game.debug, !game.debug);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkLeft)) {
-                    self.camera.move(new THREE.Vector3(-10*game.input.getTimeDelta(),0,0), false);
+                    self.camera.move(new THREE.Vector3(-10*game.input.getTimeDelta(),0,0), !game.debug, !game.debug);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkRight)) {
-                    self.camera.move(new THREE.Vector3(10*game.input.getTimeDelta(),0,0), false);
+                    self.camera.move(new THREE.Vector3(10*game.input.getTimeDelta(),0,0), !game.debug, !game.debug);
                 }
 
                 if (game.input.isKeyHeld("i")) {
@@ -871,6 +924,11 @@ function Nubenstein() {
                     console.log(self.camera.renderable.roataion);
                     console.log(typeof self.camera);
                     console.log(game.input.getTimeDelta());
+                    console.log("Debug state: " + game.debug);
+                }
+
+                if(game.input.isKeyHeld("o")) {
+                    game.debug = !game.debug;
                 }
 
                 self.camera.look(new THREE.Vector3(0.0, 1.0, 0.0), -game.input.mouseMoved().x * game.input.config.lookSensitivity, true);

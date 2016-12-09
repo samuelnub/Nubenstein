@@ -82,3 +82,6 @@ keep an instance of an entity, which contains stuff like name, health, and rende
 fixed small chance of door placement checking an undefined cell
 sometimes its good to just hit refresh and muck about until you find something that breaks 
 lol
+starting on collision checking, really messy atm lol
+
+9 Dec 2016
