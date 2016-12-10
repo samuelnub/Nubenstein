@@ -9,6 +9,11 @@
     document.head.appendChild(threejsElement);
 })();
 
+let nubenstein;
+window.onload = function() {
+    nubenstein = new Nubenstein();
+};
+
 function Nubenstein() {
     // Setting up consts and other variables
     const nubElement = document.getElementById("nubenstein");
@@ -17,7 +22,7 @@ function Nubenstein() {
         return;
     }
 
-    const game = {};
+    const game = this;
     // curse you, semantics-of-the-"this"-context-in-javascript!
     {
         game.debug = true;
@@ -938,5 +943,3 @@ function Nubenstein() {
         game.renderer.render(game.scene, game.player.camera.renderable);
     })();
 };
-
-window.onload = Nubenstein;
