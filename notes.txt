@@ -94,3 +94,6 @@ made the "game" object refer to Nubenstein's this context, making it publically 
 
 11 Dec 2016
 wip sliding :((
+ooh, sliding works! horribly inefficient, but it works, will make it more streamlined
+"eventually"
+also, over 1000 LOC, *mild celebration*
