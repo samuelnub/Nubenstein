@@ -2,16 +2,14 @@
     if (typeof THREE != "undefined") {
         return;
     }
-
     let threejsElement = document.createElement("script");
     threejsElement.type = "text/javascript";
     threejsElement.src = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r82/three.js";
     document.head.appendChild(threejsElement);
 })();
 
-let nubenstein;
 window.onload = function() {
-    nubenstein = new Nubenstein();
+    this.nubenstein = new Nubenstein();
 };
 
 function Nubenstein() {
@@ -153,7 +151,7 @@ function Nubenstein() {
                         const ourHallway = new Box();
 
                         ourHallway[majorAxis] = (!isPlus ? ourRoom[majorAxis] : ourRoom[majorAxis] - Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]));
-                        ourHallway[minorAxis] = ourRoom[minorAxis] + Math.round(newMinorValue * 0.5);
+                        ourHallway[minorAxis] = ourRoom[minorAxis] + Math.round(newMinorValue * 0.5); // TODO: small chance that this offset isnt gonna reach the relative room
                         ourHallway[majorLength] = Math.abs(relToRoom[majorAxis] - ourRoom[majorAxis]);
                         ourHallway[minorLength] = hallwaySize;
 
@@ -817,27 +815,61 @@ function Nubenstein() {
                     let curCellY = Math.floor(potPos.z/game.levelGraphicalWallSize);
 
                     let solidBoxes = [];
-                    for(let x = -1; x <= 1; x++) {
-                        for(let y = -1; y <= 1; y++) {
+
+                    const collisionMin = -1;
+                    const collisionMax = 2; // exclusive
+                    const collisionWidth = collisionMax - collisionMin;
+                    for(let x = collisionMin; x < collisionMax; x++) {
+                        for(let y = collisionMin; y < collisionMax; y++) {
                             if(x === 0 && y === 0) {
                                 continue;
                             }
                             if(game.levelGrid[(curCellX + x) + game.levelWidth * (curCellY + y)]) {
                                 for (possibleElement of game.entities.solidLevelElements) {
                                     if(game.levelGrid[(curCellX + x) + game.levelWidth * (curCellY + y)].icon === possibleElement.icon) {
-                                        solidBoxes.push(new Box((curCellX + x)*game.levelGraphicalWallSize, (curCellY + y)*game.levelGraphicalWallSize, game.levelGraphicalWallSize, game.levelGraphicalWallSize));
+                                        solidBoxes[x + collisionWidth * y] = new Box((curCellX + x)*game.levelGraphicalWallSize, (curCellY + y)*game.levelGraphicalWallSize, game.levelGraphicalWallSize, game.levelGraphicalWallSize);
                                     }
                                 }
                             }
                         }
                     }
-                    for(box of solidBoxes) {
-                        if(game.collider.doesCircleCollideBox(new Circle(potPos.x, potPos.z, self.hitRadius), box)) {
-                            // TODO: pretty messed up here lol
-                            console.log("collided!");
-                            return;
+                    for(let x = collisionMin; x < collisionMax; x++) {
+                        for(let y = collisionMin; y < collisionMax; y++) {
+                            if(solidBoxes[x + collisionWidth * y]) {
+                                if (game.collider.doesCircleCollideBox(new Circle(potPos.x, potPos.z, self.hitRadius), solidBoxes[x + collisionWidth * y])) {
+                                    // i really dont know why im wasting time by instantiating a new box every frame for every colliding entity. im sorry.
+                                    let curCellBox = new Box(curCellX*game.levelGraphicalWallSize, curCellY*game.levelGraphicalWallSize, game.levelGraphicalWallSize, game.levelGraphicalWallSize);
+
+                                    // we've found ourselves colliding with the left  box, but havent gone out of bounds for above or below us
+                                    if((potPos.x < curCellBox.x + self.hitRadius) && (potPos.z > curCellBox.y + self.hitRadius && potPos.z < curCellBox.y+curCellBox.h - self.hitRadius)) {
+                                        //potPos.z = potPos.z;
+                                        potPos.x = curCellBox.x + self.hitRadius;
+                                    }
+                                    else if((potPos.x > curCellBox.x+curCellBox.w - self.hitRadius) && (potPos.z > curCellBox.y + self.hitRadius && potPos.z < curCellBox.y+curCellBox.h - self.hitRadius)) {
+                                        //potPos.z = potPos.z;
+                                        potPos.x = curCellBox.x+curCellBox.w - (self.hitRadius*1.1);
+                                    }
+                                    
+                                    if((potPos.z < curCellBox.y + self.hitRadius) && (potPos.x > curCellBox.x + self.hitRadius && potPos.x < curCellBox.x+curCellBox.w - self.hitRadius)) {
+                                        //potPos.x = potPos.x;
+                                        potPos.z = curCellBox.y + self.hitRadius;
+                                    }
+                                    else if((potPos.z > curCellBox.y+curCellBox.h - self.hitRadius) && (potPos.x > curCellBox.x + self.hitRadius && potPos.x < curCellBox.x+curCellBox.w - self.hitRadius)) {
+                                        //potPos.x = potPos.x;
+                                        potPos.z = curCellBox.y+curCellBox.h - self.hitRadius;
+                                    }
+                                    console.log("collided");
+                                    
+                                    self.renderable.position = potPos;
+                                    if(lockHeightPlane) {
+                                        self.renderable.position.y = self.heightPlane;
+                                    }  
+                                    return;
+                                }
+                            }
                         }
                     }
+                    // didn't collide with anything'
                     justTranslate(vec, lockHeightPlane);
                     return;
                 }
