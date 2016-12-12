@@ -825,7 +825,6 @@ function Nubenstein() {
                     potMat.multiply(tempMat);
                     let potPos = new THREE.Vector3();
                     potPos.setFromMatrixPosition(potMat);
-                    let potPosClone = potPos.clone();
 
                     let curCellX = Math.floor(potPos.x/game.levelGraphicalWallSize);
                     let curCellY = Math.floor(potPos.z/game.levelGraphicalWallSize);
@@ -858,89 +857,90 @@ function Nubenstein() {
                                     // i really dont know why im wasting time by instantiating a new box every frame for every colliding entity. im sorry.
                                     let curCellBox = new Box(curCellX*game.levelGraphicalWallSize, curCellY*game.levelGraphicalWallSize, game.levelGraphicalWallSize, game.levelGraphicalWallSize);
                                     
+                                    let newPos = new THREE.Vector3(curOldPos.x, curOldPos.y, curOldPos.z);
+
                                     // we've found ourselves colliding with the left  box, but havent gone out of bounds for above or below us
                                     if(potPos.x < curCellBox.x + self.hitRadius && (potPos.z > curCellBox.y + self.hitRadius && potPos.z < curCellBox.y+curCellBox.h - self.hitRadius)) {
                                         //potPos.z = potPos.z;
-                                        potPos.x = curCellBox.x + self.hitRadius;
+                                        newPos.x = curCellBox.x + self.hitRadius;
                                     }
                                     else if(potPos.x > curCellBox.x+curCellBox.w - self.hitRadius && (potPos.z > curCellBox.y + self.hitRadius && potPos.z < curCellBox.y+curCellBox.h - self.hitRadius)) {
                                         //potPos.z = potPos.z;
-                                        potPos.x = curCellBox.x+curCellBox.w - self.hitRadius;
+                                        newPos.x = curCellBox.x+curCellBox.w - self.hitRadius;
+                                    }
+                                    else {
+                                        newPos.x = potPos.x;
                                     }
                                     
                                     if(potPos.z < curCellBox.y + self.hitRadius && (potPos.x > curCellBox.x + self.hitRadius && potPos.x < curCellBox.x+curCellBox.w - self.hitRadius)) {
                                         //potPos.x = potPos.x;
-                                        potPos.z = curCellBox.y + self.hitRadius;
+                                        newPos.z = curCellBox.y + self.hitRadius;
                                     }
                                     else if(potPos.z > curCellBox.y+curCellBox.h - self.hitRadius && (potPos.x > curCellBox.x + self.hitRadius && potPos.x < curCellBox.x+curCellBox.w - self.hitRadius)) {
                                         //potPos.x = potPos.x;
-                                        potPos.z = curCellBox.y+curCellBox.h - self.hitRadius;
+                                        newPos.z = curCellBox.y+curCellBox.h - self.hitRadius;
+                                    }
+                                    else {
+                                        newPos.z = potPos.z;
                                     }
                                     
                                     // TODO: horribly inefficient methinks, + magic numbers, forgive me lord
                                     // top left
                                     if(potPos.x < curCellBox.x + self.hitRadius && potPos.z < curCellBox.y + self.hitRadius) {
                                         
-                                        potPos.x = curCellBox.x + self.hitRadius;
-                                        potPos.z = curCellBox.y + self.hitRadius;
+                                        newPos.x = curCellBox.x + self.hitRadius;
+                                        newPos.z = curCellBox.y + self.hitRadius;
 
                                         if(!solidBoxes[-1 + collisionWidth * 0]) {
-                                            potPos.x = potPosClone.x;
+                                            newPos.x = potPos.x;
                                         }
                                         if(!solidBoxes[0 + collisionWidth * -1]) {
-                                            potPos.z = potPosClone.z;
+                                            newPos.z = potPos.z;
                                         }
                                     }
                                     // bottom left
                                     else if(potPos.x < curCellBox.x + self.hitRadius && potPos.z > curCellBox.y+curCellBox.h - self.hitRadius) {
                                         
-                                        potPos.x = curCellBox.x + self.hitRadius;
-                                        potPos.z = curCellBox.y+curCellBox.h - self.hitRadius;
+                                        newPos.x = curCellBox.x + self.hitRadius;
+                                        newPos.z = curCellBox.y+curCellBox.h - self.hitRadius;
 
                                         if(!solidBoxes[-1 + collisionWidth * 0]) {
-                                            potPos.x = potPosClone.x;
+                                            newPos.x = potPos.x;
                                         }
                                         if(!solidBoxes[0 + collisionWidth * 1]) {
-                                            potPos.z = potPosClone.z;
+                                            newPos.z = potPos.z;
                                         }
                                     }
                                     // top right
                                     else if(potPos.x > curCellBox.x+curCellBox.w - self.hitRadius && potPos.z < curCellBox.y + self.hitRadius) {
 
-                                        potPos.x = curCellBox.x+curCellBox.w - self.hitRadius;
-                                        potPos.z = curCellBox.y + self.hitRadius;
+                                        newPos.x = curCellBox.x+curCellBox.w - self.hitRadius;
+                                        newPos.z = curCellBox.y + self.hitRadius;
 
                                         if(!solidBoxes[1 + collisionWidth * 0]) {
-                                            potPos.x = potPosClone.x;
+                                            newPos.x = potPos.x;
                                         }
                                         if(!solidBoxes[0 + collisionWidth * -1]) {
-                                            potPos.z = potPosClone.z;
+                                            newPos.z = potPos.z;
                                         }
                                     }
                                     // bottom right
                                     else if(potPos.x > curCellBox.x+curCellBox.w - self.hitRadius && potPos.z > curCellBox.y+curCellBox.h - self.hitRadius) {
 
-                                        potPos.x = curCellBox.x+curCellBox.w - self.hitRadius;
-                                        potPos.z = curCellBox.y+curCellBox.h - self.hitRadius;
+                                        newPos.x = curCellBox.x+curCellBox.w - self.hitRadius;
+                                        newPos.z = curCellBox.y+curCellBox.h - self.hitRadius;
 
                                         if(!solidBoxes[1 + collisionWidth * 0]) {
-                                            potPos.x = potPosClone.x;
+                                            newPos.x = potPos.x;
                                         }
                                         if(!solidBoxes[0 + collisionWidth * 1]) {
-                                            potPos.z = potPosClone.z;
+                                            newPos.z = potPos.z;
                                         }
                                     }
 
-                                    // if we magically go to far out and it misses our checks, place us back to our old pos
-                                    if(!game.collider.doesCircleCollideBox(potPosCircle, curCellBox)) {
-                                        potPos.x = curOldPos.x;
-                                        potPos.y = curOldPos.y;
-                                        potPos.z = curOldPos.z;
-                                    }
-
-                                    self.renderable.position.x = potPos.x;
-                                    self.renderable.position.y = potPos.y;
-                                    self.renderable.position.z =potPos.z;
+                                    self.renderable.position.x = newPos.x;
+                                    self.renderable.position.y = newPos.y;
+                                    self.renderable.position.z = newPos.z;
                                     if(lockHeightPlane) {
                                         self.renderable.position.y = self.heightPlane;
                                     }
