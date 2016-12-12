@@ -860,11 +860,11 @@ function Nubenstein() {
                                     let newPos = new THREE.Vector3(curOldPos.x, curOldPos.y, curOldPos.z);
 
                                     // we've found ourselves colliding with the left  box, but havent gone out of bounds for above or below us
-                                    if(potPos.x < curCellBox.x + self.hitRadius && (potPos.z > curCellBox.y + self.hitRadius && potPos.z < curCellBox.y+curCellBox.h - self.hitRadius)) {
+                                    if(potPos.x < curCellBox.x + self.hitRadius) {
                                         //potPos.z = potPos.z;
                                         newPos.x = curCellBox.x + self.hitRadius;
                                     }
-                                    else if(potPos.x > curCellBox.x+curCellBox.w - self.hitRadius && (potPos.z > curCellBox.y + self.hitRadius && potPos.z < curCellBox.y+curCellBox.h - self.hitRadius)) {
+                                    else if(potPos.x > curCellBox.x+curCellBox.w - self.hitRadius) {
                                         //potPos.z = potPos.z;
                                         newPos.x = curCellBox.x+curCellBox.w - self.hitRadius;
                                     }
@@ -872,11 +872,11 @@ function Nubenstein() {
                                         newPos.x = potPos.x;
                                     }
                                     
-                                    if(potPos.z < curCellBox.y + self.hitRadius && (potPos.x > curCellBox.x + self.hitRadius && potPos.x < curCellBox.x+curCellBox.w - self.hitRadius)) {
+                                    if(potPos.z < curCellBox.y + self.hitRadius) {
                                         //potPos.x = potPos.x;
                                         newPos.z = curCellBox.y + self.hitRadius;
                                     }
-                                    else if(potPos.z > curCellBox.y+curCellBox.h - self.hitRadius && (potPos.x > curCellBox.x + self.hitRadius && potPos.x < curCellBox.x+curCellBox.w - self.hitRadius)) {
+                                    else if(potPos.z > curCellBox.y+curCellBox.h - self.hitRadius) {
                                         //potPos.x = potPos.x;
                                         newPos.z = curCellBox.y+curCellBox.h - self.hitRadius;
                                     }
