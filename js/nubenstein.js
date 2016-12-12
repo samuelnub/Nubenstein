@@ -62,7 +62,7 @@ function Nubenstein() {
         game.levelWidth = 48; // don't try and write to self you nincompoop
         game.levelHeight = 48; // don't write to self either you lobster
         game.levelGrid = [];
-        game.levelGraphicalWallSize = 4.0;
+        game.levelGraphicalWallSize = 2.0;
         game.levelSpawnPos = new THREE.Vector3(0,0,0); // to be changed every new level
         game.collider = new Collider(); // "static" helper
         game.entities = new Entities();
@@ -859,26 +859,23 @@ function Nubenstein() {
                                     
                                     let newPos = new THREE.Vector3(curOldPos.x, curOldPos.y, curOldPos.z);
 
-                                    // we've found ourselves colliding with the left  box, but havent gone out of bounds for above or below us
+                                    const leeway = 1.0;
+
                                     if(potPos.x < curCellBox.x + self.hitRadius) {
-                                        //potPos.z = potPos.z;
-                                        newPos.x = curCellBox.x + self.hitRadius;
+                                        newPos.x = curCellBox.x + self.hitRadius * leeway;
                                     }
                                     else if(potPos.x > curCellBox.x+curCellBox.w - self.hitRadius) {
-                                        //potPos.z = potPos.z;
-                                        newPos.x = curCellBox.x+curCellBox.w - self.hitRadius;
+                                        newPos.x = curCellBox.x+curCellBox.w - self.hitRadius * leeway;
                                     }
                                     else {
                                         newPos.x = potPos.x;
                                     }
                                     
                                     if(potPos.z < curCellBox.y + self.hitRadius) {
-                                        //potPos.x = potPos.x;
-                                        newPos.z = curCellBox.y + self.hitRadius;
+                                        newPos.z = curCellBox.y + self.hitRadius * leeway;
                                     }
                                     else if(potPos.z > curCellBox.y+curCellBox.h - self.hitRadius) {
-                                        //potPos.x = potPos.x;
-                                        newPos.z = curCellBox.y+curCellBox.h - self.hitRadius;
+                                        newPos.z = curCellBox.y+curCellBox.h - self.hitRadius * leeway;
                                     }
                                     else {
                                         newPos.z = potPos.z;
@@ -888,8 +885,8 @@ function Nubenstein() {
                                     // top left
                                     if(potPos.x < curCellBox.x + self.hitRadius && potPos.z < curCellBox.y + self.hitRadius) {
                                         
-                                        newPos.x = curCellBox.x + self.hitRadius;
-                                        newPos.z = curCellBox.y + self.hitRadius;
+                                        newPos.x = curCellBox.x + self.hitRadius * leeway;
+                                        newPos.z = curCellBox.y + self.hitRadius * leeway;
 
                                         if(!solidBoxes[-1 + collisionWidth * 0]) {
                                             newPos.x = potPos.x;
@@ -901,8 +898,8 @@ function Nubenstein() {
                                     // bottom left
                                     else if(potPos.x < curCellBox.x + self.hitRadius && potPos.z > curCellBox.y+curCellBox.h - self.hitRadius) {
                                         
-                                        newPos.x = curCellBox.x + self.hitRadius;
-                                        newPos.z = curCellBox.y+curCellBox.h - self.hitRadius;
+                                        newPos.x = curCellBox.x + self.hitRadius * leeway;
+                                        newPos.z = curCellBox.y+curCellBox.h - self.hitRadius * leeway;
 
                                         if(!solidBoxes[-1 + collisionWidth * 0]) {
                                             newPos.x = potPos.x;
@@ -914,8 +911,8 @@ function Nubenstein() {
                                     // top right
                                     else if(potPos.x > curCellBox.x+curCellBox.w - self.hitRadius && potPos.z < curCellBox.y + self.hitRadius) {
 
-                                        newPos.x = curCellBox.x+curCellBox.w - self.hitRadius;
-                                        newPos.z = curCellBox.y + self.hitRadius;
+                                        newPos.x = curCellBox.x+curCellBox.w - self.hitRadius * leeway;
+                                        newPos.z = curCellBox.y + self.hitRadius * leeway;
 
                                         if(!solidBoxes[1 + collisionWidth * 0]) {
                                             newPos.x = potPos.x;
@@ -927,8 +924,8 @@ function Nubenstein() {
                                     // bottom right
                                     else if(potPos.x > curCellBox.x+curCellBox.w - self.hitRadius && potPos.z > curCellBox.y+curCellBox.h - self.hitRadius) {
 
-                                        newPos.x = curCellBox.x+curCellBox.w - self.hitRadius;
-                                        newPos.z = curCellBox.y+curCellBox.h - self.hitRadius;
+                                        newPos.x = curCellBox.x+curCellBox.w - self.hitRadius * leeway;
+                                        newPos.z = curCellBox.y+curCellBox.h - self.hitRadius * leeway;
 
                                         if(!solidBoxes[1 + collisionWidth * 0]) {
                                             newPos.x = potPos.x;
@@ -989,6 +986,8 @@ function Nubenstein() {
 
         // don't write to self externally, just a simple getter. set by using the func'
         self.fov = 75.0;
+        self.moveSpeed = 4;
+        
         self.camera = game.entities.create({
             name: "player-camera",
             renderable: new THREE.PerspectiveCamera(self.fov, game.width / game.height, 0.01, 1000),
@@ -1010,16 +1009,16 @@ function Nubenstein() {
 
                 // TODO: use collider class to handle translation collisions with the levelGrid
                 if (game.input.isKeyHeld(game.input.config.walkForward)) {
-                    self.camera.move(new THREE.Vector3(0,0,-6*game.levelGraphicalWallSize*game.input.getTimeDelta()), !game.debug, !game.debug);
+                    self.camera.move(new THREE.Vector3(0,0,-self.moveSpeed*game.levelGraphicalWallSize*game.input.getTimeDelta()), !game.debug, !game.debug);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkBackward)) {
-                    self.camera.move(new THREE.Vector3(0,0,6*game.levelGraphicalWallSize*game.input.getTimeDelta()), !game.debug, !game.debug);
+                    self.camera.move(new THREE.Vector3(0,0,self.moveSpeed*game.levelGraphicalWallSize*game.input.getTimeDelta()), !game.debug, !game.debug);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkLeft)) {
-                    self.camera.move(new THREE.Vector3(-6*game.levelGraphicalWallSize*game.input.getTimeDelta(),0,0), !game.debug, !game.debug);
+                    self.camera.move(new THREE.Vector3(-self.moveSpeed*game.levelGraphicalWallSize*game.input.getTimeDelta(),0,0), !game.debug, !game.debug);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkRight)) {
-                    self.camera.move(new THREE.Vector3(6*game.levelGraphicalWallSize*game.input.getTimeDelta(),0,0), !game.debug, !game.debug);
+                    self.camera.move(new THREE.Vector3(self.moveSpeed*game.levelGraphicalWallSize*game.input.getTimeDelta(),0,0), !game.debug, !game.debug);
                 }
 
                 if (game.input.isKeyHeld("i")) {

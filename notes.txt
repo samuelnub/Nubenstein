@@ -97,3 +97,8 @@ wip sliding :((
 ooh, sliding works! horribly inefficient, but it works, will make it more streamlined
 "eventually"
 also, over 1000 LOC, *mild celebration*
+
+12 Dec 2016
+tryna sort out the whole cesspool regarding collision, adding a leeway seems to help
+(honestly i have no god damn clue why it just randomly goes thorugh the wall sometimes)
+welp, i guess "just go slower you speedy gonzalez" works
