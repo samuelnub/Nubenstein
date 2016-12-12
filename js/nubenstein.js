@@ -1,15 +1,26 @@
+const nubGlobal = this;
 (function () {
-    if (typeof THREE != "undefined") {
-        return;
+    if (typeof THREE == "undefined") {
+        let threejsElement = document.createElement("script");
+        threejsElement.type = "text/javascript";
+        threejsElement.src = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r82/three.js";
+        document.head.appendChild(threejsElement);
     }
-    let threejsElement = document.createElement("script");
-    threejsElement.type = "text/javascript";
-    threejsElement.src = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r82/three.js";
-    document.head.appendChild(threejsElement);
+
+    if(typeof Stats == "undefined") {
+        let statsjsElement = document.createElement("script");
+        statsjsElement.type = "text/javascript";
+        statsjsElement.src = "https://cdnjs.cloudflare.com/ajax/libs/stats.js/r16/Stats.js";
+        document.head.appendChild(statsjsElement);   
+    }
 })();
 
 window.onload = function() {
-    this.nubenstein = new Nubenstein();
+    nubGlobal.nubStats = new Stats();
+    nubGlobal.nubStats.showPanel(0);
+    document.body.appendChild(nubGlobal.nubStats.domElement);
+
+    nubGlobal.nubenstein = new Nubenstein();
 };
 
 function Nubenstein() {
@@ -51,7 +62,7 @@ function Nubenstein() {
         game.levelWidth = 48; // don't try and write to self you nincompoop
         game.levelHeight = 48; // don't write to self either you lobster
         game.levelGrid = [];
-        game.levelGraphicalWallSize = 1.0;
+        game.levelGraphicalWallSize = 4.0;
         game.levelSpawnPos = new THREE.Vector3(0,0,0); // to be changed every new level
         game.collider = new Collider(); // "static" helper
         game.entities = new Entities();
@@ -796,7 +807,11 @@ function Nubenstein() {
             self.hitRadius = params.hasOwnProperty("hitRadius") ? params["hitRadius"] : game.levelGraphicalWallSize * 0.15; // circular collision detection
             self.heightPlane = params.hasOwnProperty("heightPlane") ? params["heightPlane"] : game.levelGraphicalWallSize/2; // since our collision is just 2D, where should we lock the Y position of our renderable?
 
-            self.renderable.position = params.hasOwnProperty("spawnPos") ? params["spawnPos"] : game.levelSpawnPos;
+            if (params.hasOwnProperty("spawnPos")) {
+                self.renderable.position.x = params["spawnPos"].x;
+                self.renderable.position.y = params["spawnPos"].y;
+                self.renderable.position.z = params["spawnPos"].z;
+            }
             if (params.hasOwnProperty("spawnLookAt")) {
                 self.renderable.lookAt(params["spawnLookAt"]);
             }
@@ -834,10 +849,12 @@ function Nubenstein() {
                             }
                         }
                     }
+
+                    const potPosCircle = new Circle(potPos.x, potPos.z, self.hitRadius);
                     for(let x = collisionMin; x < collisionMax; x++) {
                         for(let y = collisionMin; y < collisionMax; y++) {
                             if(solidBoxes[x + collisionWidth * y]) {
-                                if (game.collider.doesCircleCollideBox(new Circle(potPos.x, potPos.z, self.hitRadius), solidBoxes[x + collisionWidth * y])) {
+                                if (game.collider.doesCircleCollideBox(potPosCircle, solidBoxes[x + collisionWidth * y])) {
                                     // i really dont know why im wasting time by instantiating a new box every frame for every colliding entity. im sorry.
                                     let curCellBox = new Box(curCellX*game.levelGraphicalWallSize, curCellY*game.levelGraphicalWallSize, game.levelGraphicalWallSize, game.levelGraphicalWallSize);
                                     
@@ -874,9 +891,8 @@ function Nubenstein() {
                                             potPos.z = potPosClone.z;
                                         }
                                     }
-
                                     // bottom left
-                                    if(potPos.x < curCellBox.x + self.hitRadius && potPos.z > curCellBox.y+curCellBox.h - self.hitRadius) {
+                                    else if(potPos.x < curCellBox.x + self.hitRadius && potPos.z > curCellBox.y+curCellBox.h - self.hitRadius) {
                                         
                                         potPos.x = curCellBox.x + self.hitRadius;
                                         potPos.z = curCellBox.y+curCellBox.h - self.hitRadius;
@@ -888,9 +904,8 @@ function Nubenstein() {
                                             potPos.z = potPosClone.z;
                                         }
                                     }
-
                                     // top right
-                                    if(potPos.x > curCellBox.x+curCellBox.w - self.hitRadius && potPos.z < curCellBox.y + self.hitRadius) {
+                                    else if(potPos.x > curCellBox.x+curCellBox.w - self.hitRadius && potPos.z < curCellBox.y + self.hitRadius) {
 
                                         potPos.x = curCellBox.x+curCellBox.w - self.hitRadius;
                                         potPos.z = curCellBox.y + self.hitRadius;
@@ -902,9 +917,8 @@ function Nubenstein() {
                                             potPos.z = potPosClone.z;
                                         }
                                     }
-
                                     // bottom right
-                                    if(potPos.x > curCellBox.x+curCellBox.w - self.hitRadius && potPos.z > curCellBox.y+curCellBox.h - self.hitRadius) {
+                                    else if(potPos.x > curCellBox.x+curCellBox.w - self.hitRadius && potPos.z > curCellBox.y+curCellBox.h - self.hitRadius) {
 
                                         potPos.x = curCellBox.x+curCellBox.w - self.hitRadius;
                                         potPos.z = curCellBox.y+curCellBox.h - self.hitRadius;
@@ -915,6 +929,13 @@ function Nubenstein() {
                                         if(!solidBoxes[0 + collisionWidth * 1]) {
                                             potPos.z = potPosClone.z;
                                         }
+                                    }
+
+                                    // if we magically go to far out and it misses our checks, place us back to our old pos
+                                    if(!game.collider.doesCircleCollideBox(potPosCircle, curCellBox)) {
+                                        potPos.x = curOldPos.x;
+                                        potPos.y = curOldPos.y;
+                                        potPos.z = curOldPos.z;
                                     }
 
                                     self.renderable.position.x = potPos.x;
@@ -928,12 +949,13 @@ function Nubenstein() {
                             }
                         }
                     }
-                    // didn't collide with anything'
+
                     justTranslate(vec, lockHeightPlane);
                     return;
                 }
                 else {
                     justTranslate(vec, lockHeightPlane);
+                    return;
                 }
 
                 function justTranslate(vec, lockHeightPlane) {
@@ -970,10 +992,8 @@ function Nubenstein() {
         self.camera = game.entities.create({
             name: "player-camera",
             renderable: new THREE.PerspectiveCamera(self.fov, game.width / game.height, 0.01, 1000),
-            spawnPos: new THREE.Vector3(0,0,-1) // TODO: doesnt work :((
+            spawnPos: new THREE.Vector3(0,0,1)
         });
-
-        self.camera.renderable.position.z = 1;
 
         self.setFov = function (newFov) {
             self.fov = (typeof newFov === "number" ? newFov : self.fov);
@@ -1022,7 +1042,8 @@ function Nubenstein() {
     }
 
     (function render() {
-        requestAnimationFrame(render);
+        // TODO: begin and end are also just a test for now
+        nubGlobal.nubStats.begin();
 
         game.player.tick();
 
@@ -1032,5 +1053,8 @@ function Nubenstein() {
         game.input.tick(); // self clears the mouse moved state to 0, so it has to be done once all other objects have queried its stuff
 
         game.renderer.render(game.scene, game.player.camera.renderable);
+
+        nubGlobal.nubStats.end();
+        requestAnimationFrame(render);
     })();
 };
