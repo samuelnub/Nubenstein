@@ -102,3 +102,14 @@ also, over 1000 LOC, *mild celebration*
 tryna sort out the whole cesspool regarding collision, adding a leeway seems to help
 (honestly i have no god damn clue why it just randomly goes thorugh the wall sometimes)
 welp, i guess "just go slower you speedy gonzalez" works
+
+26 Oct 2017
+wOAH IT'S 2017 :DDDDD
+gonna work on entity spawning, may use quadtree 
+https://github.com/Barbosik/QuadNode/blob/master/QuadNode.js
+
+27 Oct 2017
+TODO: make entity spawn pos a grid coord instead of a graphical one
+made the entity class handle time delta adjustments and scaling for the level wall graphical size
+made the grid size 64x64 instead of 48
+TODO: clearing both the quadtree and the scene adequately

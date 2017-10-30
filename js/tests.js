@@ -22,8 +22,8 @@
 function QuadNode(bound, maxChildren, maxLevel, level, parent) {
     if (!level) level = 0;
     if (!parent) parent = null;
-    var halfWidth = (bound.maxx - bound.minx) / 2;
-    var halfHeight = (bound.maxy - bound.miny) / 2;
+    let halfWidth = (bound.maxx - bound.minx) / 2;
+    let halfHeight = (bound.maxy - bound.miny) / 2;
     
     this.level = level;
     this.parent = parent;
@@ -47,7 +47,7 @@ function QuadNode(bound, maxChildren, maxLevel, level, parent) {
             throw new TypeError("QuadNode.insert: cannot insert item which already belong to another QuadNode!");
         }
         if (this.childNodes.length != 0) {
-            var quad = this.getQuad(item.bound);
+            let quad = this.getQuad(item.bound);
             if (quad != -1) {
                 this.childNodes[quad].insert(item);
                 return;
@@ -62,29 +62,29 @@ function QuadNode(bound, maxChildren, maxLevel, level, parent) {
         // split and rebalance current node
         if (this.childNodes.length == 0) {
             // split
-            var w = this.bound.halfWidth;
-            var h = this.bound.halfHeight;
-            var x0 = this.bound.minx + w;
-            var y0 = this.bound.miny;
-            var x1 = this.bound.minx;
-            var y1 = this.bound.miny;
-            var x2 = this.bound.minx;
-            var y2 = this.bound.miny + h;
-            var x3 = this.bound.minx + w;
-            var y3 = this.bound.miny + h;
-            var b0 = { minx: x0, miny: y0, maxx: x0 + w, maxy: y0 + h };
-            var b1 = { minx: x1, miny: y1, maxx: x1 + w, maxy: y1 + h };
-            var b2 = { minx: x2, miny: y2, maxx: x2 + w, maxy: y2 + h };
-            var b3 = { minx: x3, miny: y3, maxx: x3 + w, maxy: y3 + h };
+            let w = this.bound.halfWidth;
+            let h = this.bound.halfHeight;
+            let x0 = this.bound.minx + w;
+            let y0 = this.bound.miny;
+            let x1 = this.bound.minx;
+            let y1 = this.bound.miny;
+            let x2 = this.bound.minx;
+            let y2 = this.bound.miny + h;
+            let x3 = this.bound.minx + w;
+            let y3 = this.bound.miny + h;
+            let b0 = { minx: x0, miny: y0, maxx: x0 + w, maxy: y0 + h };
+            let b1 = { minx: x1, miny: y1, maxx: x1 + w, maxy: y1 + h };
+            let b2 = { minx: x2, miny: y2, maxx: x2 + w, maxy: y2 + h };
+            let b3 = { minx: x3, miny: y3, maxx: x3 + w, maxy: y3 + h };
             this.childNodes.push(new QuadNode(b0, this.maxChildren, this.maxLevel, this.level + 1, this));
             this.childNodes.push(new QuadNode(b1, this.maxChildren, this.maxLevel, this.level + 1, this));
             this.childNodes.push(new QuadNode(b2, this.maxChildren, this.maxLevel, this.level + 1, this));
             this.childNodes.push(new QuadNode(b3, this.maxChildren, this.maxLevel, this.level + 1, this));
         }
         // rebalance
-        for (var i = 0; i < this.items.length; ) {
-            var qitem = this.items[i];
-            var quad = this.getQuad(qitem.bound);
+        for (let i = 0; i < this.items.length; ) {
+            let qitem = this.items[i];
+            let quad = this.getQuad(qitem.bound);
             if (quad != -1) {
                 this.items.splice(i, 1);
                 qitem._quadNode = null;
@@ -99,7 +99,7 @@ function QuadNode(bound, maxChildren, maxLevel, level, parent) {
             item._quadNode.remove(item);
             return;
         }
-        var index = this.items.indexOf(item);
+        let index = this.items.indexOf(item);
         if (index < 0) {
             throw new TypeError("QuadNode.remove: item not found!");
         }
@@ -110,8 +110,8 @@ function QuadNode(bound, maxChildren, maxLevel, level, parent) {
 
     this.cleanup = function(node) {
         if (node.parent==null || node.items.length > 0) return;
-        for (var i = 0; i < node.childNodes.length; i++) {
-            var child = node.childNodes[i];
+        for (let i = 0; i < node.childNodes.length; i++) {
+            let child = node.childNodes[i];
             if (child.childNodes.length > 0 || child.items.length > 0)
                 return;
         }
@@ -125,10 +125,10 @@ function QuadNode(bound, maxChildren, maxLevel, level, parent) {
     };
 
     this.clear = function () {
-        for (var i = 0; i < this.items.length; i++)
+        for (let i = 0; i < this.items.length; i++)
             this.items[i]._quadNode = null;
         this.items = [];
-        for (var i = 0; i < this.childNodes.length; i++)
+        for (let i = 0; i < this.childNodes.length; i++)
             this.childNodes[i].clear();
         this.childNodes = [];
     };
@@ -144,19 +144,19 @@ function QuadNode(bound, maxChildren, maxLevel, level, parent) {
 
     this.find = function (bound, callback) {
         if (this.childNodes.length != 0) {
-            var quad = this.getQuad(bound);
+            let quad = this.getQuad(bound);
             if (quad != -1) {
                 this.childNodes[quad].find(bound, callback);
             } else {
-                for (var i = 0; i < this.childNodes.length; i++) {
-                    var node = this.childNodes[i];
+                for (let i = 0; i < this.childNodes.length; i++) {
+                    let node = this.childNodes[i];
                     if (checkBoundIntersection(node.bound, bound))
                         node.find(bound, callback);
                 }
             }
         }
-        for (var i = 0; i < this.items.length; i++) {
-            var item = this.items[i];
+        for (let i = 0; i < this.items.length; i++) {
+            let item = this.items[i];
             if (checkBoundIntersection(item.bound, bound))
                 callback(item);
         }
@@ -164,21 +164,21 @@ function QuadNode(bound, maxChildren, maxLevel, level, parent) {
 
     this.any = function (bound, predicate) {
         if (this.childNodes.length != 0) {
-            var quad = this.getQuad(bound);
+            let quad = this.getQuad(bound);
             if (quad != -1) {
                 if (this.childNodes[quad].any(bound, predicate))
                     return true;
             } else {
-                for (var i = 0; i < this.childNodes.length; i++) {
-                    var node = this.childNodes[i];
+                for (let i = 0; i < this.childNodes.length; i++) {
+                    let node = this.childNodes[i];
                     if (checkBoundIntersection(node.bound, bound))
                         if (node.any(bound, predicate))
                             return true;
                 }
             }
         }
-        for (var i = 0; i < this.items.length; i++) {
-            var item = this.items[i];
+        for (let i = 0; i < this.items.length; i++) {
+            let item = this.items[i];
             if (checkBoundIntersection(item.bound, bound)) {
                 if (predicate == null || predicate(item))
                     return true;
@@ -188,24 +188,24 @@ function QuadNode(bound, maxChildren, maxLevel, level, parent) {
     };
 
     this.scanNodeCount = function () {
-        var count = 0;
-        for (var i = 0; i < this.childNodes.length; i++) {
+        let count = 0;
+        for (let i = 0; i < this.childNodes.length; i++) {
             count += this.childNodes[i].scanNodeCount();
         }
         return 1 + count;
     };
 
     this.scanItemCount = function () {
-        var count = 0;
-        for (var i = 0; i < this.childNodes.length; i++) {
+        let count = 0;
+        for (let i = 0; i < this.childNodes.length; i++) {
             count += this.childNodes[i].scanItemCount();
         }
         return this.items.length + count;
     };
 
     this.getQuad = function (bound) {
-        var isTop = bound.miny < this.bound.cy && bound.maxy < this.bound.cy;
-        var isLeft = bound.minx < this.bound.cx && bound.maxx < this.bound.cx;
+        let isTop = bound.miny < this.bound.cy && bound.maxy < this.bound.cy;
+        let isLeft = bound.minx < this.bound.cx && bound.maxx < this.bound.cx;
         if (isLeft) {
             if (isTop) return 1;
             else if (bound.miny > this.bound.cy) return 2; // isBottom
@@ -219,7 +219,7 @@ function QuadNode(bound, maxChildren, maxLevel, level, parent) {
     };
 
     function checkBoundIntersection(bound1, bound2) {
-        var notIntersect = 
+        let notIntersect = 
             bound2.minx >= bound1.maxx ||
             bound2.maxx <= bound1.minx ||
             bound2.miny >= bound1.maxy ||

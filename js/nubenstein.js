@@ -38,8 +38,8 @@ function Nubenstein() {
         game.width = (nubElement.getAttribute("width") ? nubElement.getAttribute("width") : 800); // TODO: dynamic resolution changing via the tags
         game.height = (nubElement.getAttribute("height") ? nubElement.getAttribute("height") : 600);
         game.renderer = new THREE.WebGLRenderer();
-        game.scene = new THREE.Scene(); // camera within self scene is handled by Player class
-        game.sceneHUD = new THREE.Scene(); // ortho camera within self is gonna be handled by HUD class
+        game.scene = new THREE.Scene(); // cameraEntity within self scene is handled by Player class
+        game.sceneHUD = new THREE.Scene(); // ortho cameraEntity within self is gonna be handled by HUD class
         game.states = {
             inGame: false
         };
@@ -59,8 +59,8 @@ function Nubenstein() {
             openEnemySpawn: new LevelLegendElementCreator("e", 16),
             openPickup: new LevelLegendElementCreator("p", 16)
         };
-        game.levelWidth = 48; // don't try and write to self you nincompoop
-        game.levelHeight = 48; // don't write to self either you lobster
+        game.levelWidth = 64; // don't try and write to self you nincompoop
+        game.levelHeight = 64; // don't write to self either you lobster
         game.levelGrid = []; // 1d array of characters treated as 2d
         game.levelGraphicalWallSize = 2.0;
         game.levelSpawnPos = new THREE.Vector3(0,0,0); // to be changed every new level
@@ -286,9 +286,9 @@ function Nubenstein() {
                 for (let i = game.scene.children.length - 1; i >= 0; i--) {
                     console.log("The scene contains:");
                     console.log(game.scene.children[i]);
-                    // removes everything, including camera!
-                    // you could do an if statement here to see if its the camera object
-                    if (game.scene.children[i] !== game.player.camera) {
+                    // removes everything, including cameraEntity!
+                    // you could do an if statement here to see if its the cameraEntity object
+                    if (game.scene.children[i] !== game.player.cameraEntity) {
                         //scene.children.remove(scene.children[i]);
                     }
                 }
@@ -521,7 +521,7 @@ function Nubenstein() {
         })();
 
         (function spawnMobs() {
-            
+            game.entities.clearAll();
         })();
 
         game.levelGrid = newLevelGrid.slice();
@@ -561,6 +561,13 @@ function Nubenstein() {
 
     function clamp(num, min, max) {
         return num <= min ? min : num >= max ? max : num;
+    }
+
+    function getGridPos(graphicalX, graphicalZ) {
+        return {
+            x: graphicalX / game.levelGraphicalWallSize,
+            y: graphicalZ / game.levelGraphicalWallSize
+        }
     }
     
     function Box(x, y, w, h) {
@@ -880,7 +887,7 @@ function Nubenstein() {
             }
             this.items.splice(index, 1);
             item._quadNode = null;
-            cleanup(this);
+            this.cleanup(this);
         };
 
         this.cleanup = function (node) {
@@ -891,7 +898,7 @@ function Nubenstein() {
                     return;
             }
             node.childNodes = [];
-            cleanup(node.parent);
+            this.cleanup(node.parent);
         };
 
         this.update = function (item) {
@@ -1031,17 +1038,17 @@ function Nubenstein() {
         self.create = function(params) {
             let entity = new Entity(params);
             
-            game.scene.add(entities[entity.name].renderable);
+            game.scene.add(entity.renderable);
             return entity;
-        };
-
-        self.getByName = function(name) {
-            
         };
 
         self.clearAll = function() {
             entityMap.clear();
-        }
+        };
+
+        self.searchByPos = function(gridX, gridY, callback /* should have 1 arg, returns the item */) {
+            entityMap.find(new Bound(gridX, gridY, gridX, gridY), callback);
+        };
 
         function Entity(params) {
             const self = this; // nested this context works! yay
@@ -1064,14 +1071,17 @@ function Nubenstein() {
             }
 
             self.quadItem = {
-                bound = new Bound(getGridPos().x, getGridPos().x, getGridPos().y, getGridPos().y),
+                bound: new Bound(getGridPos(self.renderable.position.x).x, getGridPos(self.renderable.position.z).y, getGridPos(self.renderable.position.x).x, getGridPos(self.renderable.position.z).y),
                 id: self.id,
                 entityRef: self // you're our only hope, obi wan (of ever reaching these crucial variables)
             };
 
             entityMap.insert(self.quadItem);
 
-            self.move = function(vec, collide, lockHeightPlane) {
+            self.move = function(vec, collide, lockHeightPlane, adjustForTimeDelta) { // it will adjust for the level graphical scale, so dont multiply by anything
+                vec.x = (adjustForTimeDelta ? game.input.getTimeDelta() * vec.x : vec.x) * game.levelGraphicalWallSize;
+                vec.y = (adjustForTimeDelta ? game.input.getTimeDelta() * vec.y : vec.y) * game.levelGraphicalWallSize;
+                vec.z = (adjustForTimeDelta ? game.input.getTimeDelta() * vec.z : vec.z) * game.levelGraphicalWallSize;
                 if(collide) {
                     const curOldPos = self.renderable.position.clone();
                     let potMat = self.renderable.matrixWorld.clone();
@@ -1218,10 +1228,11 @@ function Nubenstein() {
                     if(lockHeightPlane) {
                         self.renderable.position.y = self.heightPlane;
                     }
+                    updateQuad();
                 }
             };
 
-            self.look = function(axis, rads, lock /*lock to world axis, good for yaw-ing with a camera*/) {
+            self.look = function(axis, rads, lock /*lock to world axis, good for yaw-ing with a cameraEntity*/) {
                 if(lock) {
                     let rotMatWorld = new THREE.Matrix4();
                     rotMatWorld.makeRotationAxis(axis.normalize(), rads);
@@ -1234,15 +1245,8 @@ function Nubenstein() {
                 }
             };
 
-            function getGridPos() {
-                return {
-                    x: self.renderable.position.x / game.levelGraphicalWallSize,
-                    y: self.renderable.position.z / game.levelGraphicalWallSize
-                }
-            }
-
             function updateQuad() {
-                self.quadItem.bound = new Bound(getGridPos().x, getGridPos().x, getGridPos().y, getGridPos().y);
+                self.quadItem.bound = new Bound(getGridPos(self.renderable.position.x).x, getGridPos(self.renderable.position.z).y, getGridPos(self.renderable.position.x).x, getGridPos(self.renderable.position.z).y);
                 entityMap.update(self.quadItem);
             }
         }
@@ -1255,16 +1259,16 @@ function Nubenstein() {
         self.fov = 75.0;
         self.moveSpeed = 4;
         
-        self.camera = game.entities.create({
-            name: "player-camera",
+        self.cameraEntity = game.entities.create({
+            name: "player-cameraEntity",
             renderable: new THREE.PerspectiveCamera(self.fov, game.width / game.height, 0.01, 1000),
             spawnPos: new THREE.Vector3(0,0,1)
         });
 
         self.setFov = function (newFov) {
             self.fov = (typeof newFov === "number" ? newFov : self.fov);
-            self.camera.renderable.fov = self.fov;
-            self.camera.renderable.updateProjectionMatrix();
+            self.cameraEntity.renderable.fov = self.fov;
+            self.cameraEntity.renderable.updateProjectionMatrix();
             return newFov;
         };
 
@@ -1276,23 +1280,23 @@ function Nubenstein() {
 
                 // TODO: use collider class to handle translation collisions with the levelGrid
                 if (game.input.isKeyHeld(game.input.config.walkForward)) {
-                    self.camera.move(new THREE.Vector3(0,0,-self.moveSpeed*game.levelGraphicalWallSize*game.input.getTimeDelta()), !game.debug, !game.debug);
+                    self.cameraEntity.move(new THREE.Vector3(0,0,-self.moveSpeed), !game.debug, !game.debug, true);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkBackward)) {
-                    self.camera.move(new THREE.Vector3(0,0,self.moveSpeed*game.levelGraphicalWallSize*game.input.getTimeDelta()), !game.debug, !game.debug);
+                    self.cameraEntity.move(new THREE.Vector3(0,0,self.moveSpeed), !game.debug, !game.debug, true);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkLeft)) {
-                    self.camera.move(new THREE.Vector3(-self.moveSpeed*game.levelGraphicalWallSize*game.input.getTimeDelta(),0,0), !game.debug, !game.debug);
+                    self.cameraEntity.move(new THREE.Vector3(-self.moveSpeed,0,0), !game.debug, !game.debug, true);
                 }
                 if (game.input.isKeyHeld(game.input.config.walkRight)) {
-                    self.camera.move(new THREE.Vector3(self.moveSpeed*game.levelGraphicalWallSize*game.input.getTimeDelta(),0,0), !game.debug, !game.debug);
+                    self.cameraEntity.move(new THREE.Vector3(self.moveSpeed,0,0), !game.debug, !game.debug, true);
                 }
 
                 if (game.input.isKeyHeld("i")) {
-                    console.log(self.camera.renderable.rotation.x);
-                    console.log(self.camera.renderable.position);
-                    console.log(self.camera.renderable.roataion);
-                    console.log(typeof self.camera);
+                    console.log(self.cameraEntity.renderable.rotation.x);
+                    console.log(self.cameraEntity.renderable.position);
+                    console.log(self.cameraEntity.renderable.roataion);
+                    console.log(typeof self.cameraEntity);
                     console.log(game.input.getTimeDelta());
                     console.log("Debug state: " + game.debug);
                 }
@@ -1301,8 +1305,8 @@ function Nubenstein() {
                     game.debug = !game.debug;
                 }
 
-                self.camera.look(new THREE.Vector3(0.0, 1.0, 0.0), -game.input.mouseMoved().x * game.input.config.lookSensitivity, true);
-                self.camera.look(new THREE.Vector3(1.0, 0, 0.0), -game.input.mouseMoved().y * game.input.config.lookSensitivity, false);
+                self.cameraEntity.look(new THREE.Vector3(0.0, 1.0, 0.0), -game.input.mouseMoved().x * game.input.config.lookSensitivity, true);
+                self.cameraEntity.look(new THREE.Vector3(1.0, 0, 0.0), -game.input.mouseMoved().y * game.input.config.lookSensitivity, false);
             })();
         };
     }
@@ -1318,7 +1322,7 @@ function Nubenstein() {
 
         game.input.tick(); // self clears the mouse moved state to 0, so it has to be done once all other objects have queried its stuff
 
-        game.renderer.render(game.scene, game.player.camera.renderable);
+        game.renderer.render(game.scene, game.player.cameraEntity.renderable);
 
         nubGlobal.nubStats.end();
         requestAnimationFrame(render);
